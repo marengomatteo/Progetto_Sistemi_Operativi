@@ -66,25 +66,28 @@ char *node_arguments[5] = {NODE_NAME};
 
 int *node_pids;
 
+/*Definire una struct transaction*/
+
 void alarmHandler(int sig)
 {
     printf("Allarme ricevuto e trattato\n");
     alarm(1);
 }
+
 int main()
 {
 
     /* Inizializzo array per i pid dei nodi creati */
     node_pids = malloc(SO_NODES_NUM * sizeof(int));
 
-    if (signal(SIGALRM, alarmHandler) == SIG_ERR)
+    /* if (signal(SIGALRM, alarmHandler) == SIG_ERR)
     {
         printf("\nErrore della disposizione dell'handler\n");
         exit(EXIT_FAILURE);
-    }
-    alarm(2);
+     }
+     alarm(2);*/
     genera_nodi();
-    genera_utenti();
+    /*genera_utenti();*/
 }
 
 void genera_nodi()
@@ -99,18 +102,38 @@ void genera_nodi()
     {
         switch (fork())
         {
-        case 0:
-            node_pids[i] = getpid();
-            /* INSTANZIARE CON EXECVE IL NODO, Passare parametri */
-            execve(NODE_NAME, node_arguments, NULL);
-            TEST_ERROR;
-        case -1:
-            TEST_ERROR;
-        default:
+            case 0:
+                /*
+                  Informo il padre che è nato un nodo
+                */
+                sops.sem_num = ID_READY;
+                sops.sem_op = -1;
+                semop(sem_nodes_id, &sops, 0);
+                TEST_ERROR;
 
+                node_arguments[1] = 0;
+                char sem_nodes_id_char[10];
+                sprintf(sem_nodes_id_char,"%c",sem_nodes_id);
+                node_arguments[2] = sem_nodes_id_char;
+
+                node_pids[i] = getpid();
+
+                /* INSTANZIARE CON EXECVE IL NODO, Passare parametri */
+                execve(NODE_NAME, node_arguments, NULL);
+                TEST_ERROR;
+
+
+                
+            case -1:
+                TEST_ERROR;
+            default:
+               
             break;
         }
     }
+
+    semctl(sem_nodes_id, 0,IPC_RMID);
+    TEST_ERROR;
 }
 
 void genera_utenti()
@@ -122,11 +145,11 @@ void genera_utenti()
         switch (fork())
         {
         case 0:
-            // Passare parametri per creazioni
+            /* Passare parametri per creazioni*/
             printf("pid user: %d", getpid());
             printf("\n");
             exit(EXIT_SUCCESS);
-        // execve();
+        /* execve();*/
         case -1:
             TEST_ERROR;
         default:
