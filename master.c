@@ -45,7 +45,6 @@ void alarmHandler(int sig) {
 }
 int main()
 {
-
   if (signal(SIGALRM, alarmHandler)==SIG_ERR) {
     printf("\nErrore della disposizione dell'handler\n");
     exit(EXIT_FAILURE);
@@ -65,7 +64,6 @@ void genera_nodi()
        switch (fork())
         {
         case 0:
-        sleep(30);
         printf("pid nodo: %d",getpid());
         printf("\n");
         exit(EXIT_SUCCESS);
@@ -78,7 +76,7 @@ void genera_nodi()
 
             break;
         }
-     }
+    }
 }
 
 void genera_utenti()
