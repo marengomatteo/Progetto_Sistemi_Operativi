@@ -8,6 +8,13 @@
 #include <math.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
+#include <sys/msg.h>
+#include <sys/shm.h>
+
 #include "master.h"
 
 #define TEST_ERROR                                 \
@@ -39,44 +46,108 @@
 #define SO_FRIENDS_NUM atoi(getenv("SO_FRIENDS_NUM"))
 #define SO_HOPS atoi(getenv("SO_HOPS"))
 
-void alarmHandler(int sig) {
-  printf("Allarme ricevuto e trattato\n");
-  alarm(1);
+/* Definizione variabili ausiliarie */
+#define NODE_NAME "nodo.c"
+#define USER_NAME "user"
+#define ID_READY 0 /* figli pronti: padre puo` procedere */
+#define ID_GO 1    /* padre pronto: figli possono procedere */
+
+/* ID IPC Semaforo globale */
+int sem_nodes_id;
+struct sembuf sops;
+int node_param_id;
+int user_param_id;
+
+/* Array per tener traccia delle risorse create SHAREDMEMORY */
+int *sh_mem_sources;
+
+char *node_arguments[5] = {NODE_NAME};
+
+int *node_pids;
+
+/*Definire una struct transaction*/
+ struct transaction {
+    int id;
+    int source;
+    int dest;
+    int amount;
+    int status;
+};
+void alarmHandler(int sig)
+{
+    printf("Allarme ricevuto e trattato\n");
+    alarm(1);
 }
+
 int main()
 {
-  if (signal(SIGALRM, alarmHandler)==SIG_ERR) {
-    printf("\nErrore della disposizione dell'handler\n");
-    exit(EXIT_FAILURE);
-  }
-    alarm(2);
+
+    /* Inizializzo array per i pid dei nodi creati */
+    node_pids = malloc(SO_NODES_NUM * sizeof(int));
+    /* if (signal(SIGALRM, alarmHandler) == SIG_ERR)
+    {
+        printf("\nErrore della disposizione dell'handler\n");
+        exit(EXIT_FAILURE);
+     }
+     alarm(2);*/
+         sem_nodes_id = semget(IPC_PRIVATE, 1, 0600);
+    TEST_ERROR
+    semctl(sem_nodes_id, 0, SETVAL, 1);
+    TEST_ERROR
+    sops.sem_num = 0;
+    sops.sem_flg = 0;
+
     genera_nodi();
-    genera_utenti();
+    //genera_utenti();
+
+    semctl(sem_nodes_id, 0,IPC_RMID);
 }
 
 void genera_nodi()
 {
     int i;
 
+    /* SEMAFORO QUI PER I NODI (DOPO LA FORK ASPETTO CHE VENGA GENERATA ALMENO LA CODA DI MESSAGGI/ SETUP INIZIALE DEI NODI) */
     for (i = 0; i < SO_NODES_NUM; i++)
     {
-      
-       switch (fork())
+        switch (fork())
         {
-        case 0:
-        printf("pid nodo: %d",getpid());
-        printf("\n");
-        exit(EXIT_SUCCESS);
-        // Passare parametri per creazioni
-        // execve();
-        case -1:
-            TEST_ERROR;
-        default:
-               
+            case 0:
+                /* Nodo */
+                printf("\nNodo %d creato\n", i);
+                printf("Valore semaforo prima: %d\n", semctl(sem_nodes_id, 0, GETVAL));
+                /*
+                  Informo il padre che è nato un nodo
+                */
+                sops.sem_op = -1;
+                semop(sem_nodes_id, &sops, 1);
+                TEST_ERROR
+                printf("sem nodo %d sbloccata\n", i);
+                printf("Valore semaforo: %d\n", semctl(sem_nodes_id, 0, GETVAL));
+                node_arguments[1] = 0;
+                char sem_nodes_id_char[10];
+                sprintf(sem_nodes_id_char,"%c",sem_nodes_id);
+                node_arguments[2] = sem_nodes_id_char;
 
+                node_pids[i] = getpid();
+                sops.sem_op = 1;
+
+                /* INSTANZIARE CON EXECVE IL NODO, Passare parametri */
+                //execve(NODE_NAME, node_arguments, NULL);
+                TEST_ERROR;
+
+                //delete semaphore
+                
+            case -1:
+                TEST_ERROR;
+                exit(EXIT_FAILURE);
+            default:
+               
             break;
         }
     }
+
+    TEST_ERROR;
 }
 
 void genera_utenti()
@@ -88,11 +159,11 @@ void genera_utenti()
         switch (fork())
         {
         case 0:
-        // Passare parametri per creazioni
-        printf("pid user: %d",getpid());
-        printf("\n");
-        exit(EXIT_SUCCESS);
-        // execve();
+            /* Passare parametri per creazioni*/
+            printf("pid user: %d", getpid());
+            printf("\n");
+            exit(EXIT_SUCCESS);
+        /* execve();*/
         case -1:
             TEST_ERROR;
         default:
