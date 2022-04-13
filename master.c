@@ -65,14 +65,6 @@ char *node_arguments[5] = {"3", "2", "2","2","2"};
 
 int *node_pids;
 
-/*Definire una struct transaction*/
- struct transaction {
-    int id;
-    int source;
-    int dest;
-    int amount;
-    int status;
-};
 void alarmHandler(int sig)
 {
     printf("Allarme ricevuto e trattato\n");
@@ -86,10 +78,9 @@ int main()
     /* Inizializzo array per i pid dei nodi creati */
     /* node_pids =(int*) malloc(SO_NODES_NUM * sizeof(int));
     */
-    sem_nodes_id = semget(IPC_PRIVATE, 1, 0600);
     //value semaphore
     //printf("\nSEMAFORO: %d ", sem_nodes_id);
-    if(sem_nodes_id == -1)
+    if(sem_nodes_id = semget(IPC_PRIVATE, 1, 0600) == -1)
     {
         printf("Errore nella creazione del semaforo\n");
         exit(EXIT_FAILURE);
@@ -100,7 +91,7 @@ int main()
         exit(EXIT_FAILURE);
     }
     genera_nodi();
-
+    
     /* if (signal(SIGALRM, alarmHandler) == SIG_ERR)
     {
         printf("\nErrore della disposizione dell'handler\n");
@@ -108,12 +99,16 @@ int main()
      }
      alarm(2);*/
     genera_utenti();
+
+
+
 }
 
 void genera_nodi()
 {
     int i;
     printf("\nGenerazione nodi\n");
+    printf("\n ENV = %d\n", SO_NODES_NUM);
     /* SEMAFORO QUI PER I NODI (DOPO LA FORK ASPETTO CHE VENGA GENERATA ALMENO LA CODA DI MESSAGGI/ SETUP INIZIALE DEI NODI) */
     sops.sem_num = ID_READY;
     sops.sem_op = -1;
@@ -156,6 +151,8 @@ void genera_nodi()
         }
     }
     semop(sem_nodes_id, &sops, SO_USERS_NUM);
+
+
 
 }
 

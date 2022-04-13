@@ -28,6 +28,5 @@ int main(int argc, char *argv[])
     che il nodo ha creato la sua coda di messaggi */
      sops.sem_num = ID_READY;
       sops.sem_op = 1;
-    //  printf("\n%d", SM_PARAM_ID);
     semop(SM_PARAM_ID, &sops, 1);
 }
