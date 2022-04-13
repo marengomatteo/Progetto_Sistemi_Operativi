@@ -76,9 +76,13 @@ void alarmHandler(int sig)
 
 int main()
 {
+    printf("%s",getenv("HOME"));
 
     /* Inizializzo array per i pid dei nodi creati */
-    node_pids = malloc(SO_NODES_NUM * sizeof(int));
+    /* node_pids =(int*) malloc(SO_NODES_NUM * sizeof(int));
+    */
+   
+    // genera_nodi();
 
     /* if (signal(SIGALRM, alarmHandler) == SIG_ERR)
     {
@@ -86,40 +90,55 @@ int main()
         exit(EXIT_FAILURE);
      }
      alarm(2);*/
-    genera_nodi();
     /*genera_utenti();*/
 }
 
 void genera_nodi()
 {
     int i;
-
+    printf("\nGenerazione nodi\n");
     /* SEMAFORO QUI PER I NODI (DOPO LA FORK ASPETTO CHE VENGA GENERATA ALMENO LA CODA DI MESSAGGI/ SETUP INIZIALE DEI NODI) */
-    sem_nodes_id = semget(IPC_PRIVATE, 1, 0600);
-    semctl(sem_nodes_id, 0, SETVAL, 1);
-
-    for (i = 0; i < SO_NODES_NUM; i++)
+    sem_nodes_id = semget(IPC_PRIVATE, 5, 0600);
+    if(sem_nodes_id == -1)
     {
+        printf("Errore nella creazione del semaforo\n");
+        exit(EXIT_FAILURE);
+    }
+    if(semctl(sem_nodes_id, 0, SETVAL, 0) == -1)
+    {
+        printf("Errore nell'inizializzazione del semaforo\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for (i = 0; i < 5; i++)
+    {
+        
         switch (fork())
         {
             case 0:
+                printf("\nCreato nodo %d\n",getpid());
                 /*
                   Informo il padre che è nato un nodo
                 */
                 sops.sem_num = ID_READY;
-                sops.sem_op = -1;
-                semop(sem_nodes_id, &sops, 0);
-                TEST_ERROR;
+                sops.sem_op = 0;
 
+                if(semop(sem_nodes_id, &sops, 1) == -1)
+                {
+                    printf("Errore nell'operazione di decremento del semaforo\n");
+                    exit(EXIT_FAILURE);
+                }
+                printf("superata if\n");
                 node_arguments[1] = 0;
                 char sem_nodes_id_char[10];
                 sprintf(sem_nodes_id_char,"%c",sem_nodes_id);
                 node_arguments[2] = sem_nodes_id_char;
 
                 node_pids[i] = getpid();
+                printf("superato node_arguments e pid\n");
 
                 /* INSTANZIARE CON EXECVE IL NODO, Passare parametri */
-                execve(NODE_NAME, node_arguments, NULL);
+                execve("./nodo", node_arguments, NULL);
                 TEST_ERROR;
 
 
@@ -132,8 +151,6 @@ void genera_nodi()
         }
     }
 
-    semctl(sem_nodes_id, 0,IPC_RMID);
-    TEST_ERROR;
 }
 
 void genera_utenti()
