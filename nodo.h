@@ -10,7 +10,7 @@
     int reward;
 } transaction;
 void transaction_print (transaction d){
-    printf("\t%d,\n\t%d,\n\t%d,\n\t%d,\n\t%d\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
+    printf("\ttimestamp: %d,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
 
 }
  transaction* new_transaction(int timestamp, int sender, int receiver, int amount, int reward){
@@ -44,9 +44,11 @@ int l_length(list l){
 }
 
 void l_print(list l){
-	printf("{\n");
-	for ( ; l!=NULL ; l=l->next)
+	printf("transaction:\n");
+	for ( ; l!=NULL ; l=l->next){
+  	printf("{\n");
     transaction_print(l->transaction);
-	printf("\b\b},\n");
+	  printf("\b\b},\n");
+  }
 }
 
