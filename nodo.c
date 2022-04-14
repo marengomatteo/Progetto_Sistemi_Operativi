@@ -20,13 +20,10 @@
 
 int main(int argc, char *argv[])
 {
-    struct sembuf sops;
-    printf("nodo make\n");
-    printf("semaphore= %d\n", SM_PARAM_ID );
+    printf("\ncreato pid nodo: %d\n",getpid());
+    printf("semaphore= %d\n\n", SM_PARAM_ID );
     /*coda di messaggi*/
     /* semop con id che punta al semaforo per poter notificare al padre 
     che il nodo ha creato la sua coda di messaggi */
-     sops.sem_num = ID_READY;
-      sops.sem_op = 1;
-    semop(SM_PARAM_ID, &sops, 1);
+    exit(EXIT_SUCCESS);
 }

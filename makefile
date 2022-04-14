@@ -18,16 +18,16 @@ export SO_FRIENDS_NUM=3
 export SO_HOPS=10 
 
 master: master.o nodo
-	gcc -o master master.o
+	${CC} -o master master.o
 
 nodo: nodo.o
-	gcc -o nodo nodo.o
+	${CC} -o nodo nodo.o
 
 master.o: master.c master.h
-	gcc -c master.c
+	${CC} -c -std=c89 -pedantic master.c
 
 nodo.o: nodo.c
-	gcc -c nodo.c
+	${CC} -c -std=c89 -pedantic nodo.c
 
 clean:
 	rm -f *.o

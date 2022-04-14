@@ -47,8 +47,8 @@
 #define SO_HOPS atoi(getenv("SO_HOPS"))
 
 /* Definizione variabili ausiliarie */
-#define NODE_NAME "nodo.c"
-#define USER_NAME "user"
+#define NODE_NAME "./nodo"
+#define USER_NAME "./user"
 #define ID_READY 0 /* figli pronti: padre puo` procedere */
 #define ID_GO 1    /* padre pronto: figli possono procedere */
 
@@ -61,7 +61,7 @@ int user_param_id;
 /* Array per tener traccia delle risorse create SHAREDMEMORY */
 int *sh_mem_sources;
 
-char *node_arguments[5] = {"3", "2", "2","2","2"};
+char *node_arguments[5];
 
 int *node_pids;
 
@@ -73,14 +73,11 @@ void alarmHandler(int sig)
 
 int main()
 {
-    //printf("%s",getenv("HOME"));
-
     /* Inizializzo array per i pid dei nodi creati */
-    /* node_pids =(int*) malloc(SO_NODES_NUM * sizeof(int));
-    */
-    //value semaphore
-    //printf("\nSEMAFORO: %d ", sem_nodes_id);
-    if(sem_nodes_id = semget(IPC_PRIVATE, 1, 0600) == -1)
+    node_pids = malloc(SO_NODES_NUM * sizeof(int));
+    
+    
+    if((sem_nodes_id = semget(IPC_PRIVATE, 1, 0600)) == -1)
     {
         printf("Errore nella creazione del semaforo\n");
         exit(EXIT_FAILURE);
@@ -90,6 +87,8 @@ int main()
         printf("Errore nell'inizializzazione del semaforo\n");
         exit(EXIT_FAILURE);
     }
+     sops.sem_num = ID_READY;
+       
     genera_nodi();
     
     /* if (signal(SIGALRM, alarmHandler) == SIG_ERR)
@@ -107,11 +106,12 @@ int main()
 void genera_nodi()
 {
     int i;
+    char sem_nodes_id_char[10];
     printf("\nGenerazione nodi\n");
     printf("\n ENV = %d\n", SO_NODES_NUM);
     /* SEMAFORO QUI PER I NODI (DOPO LA FORK ASPETTO CHE VENGA GENERATA ALMENO LA CODA DI MESSAGGI/ SETUP INIZIALE DEI NODI) */
-    sops.sem_num = ID_READY;
-    sops.sem_op = -1;
+   
+
     for (i = 0; i < 5; i++)
     {
         
@@ -122,26 +122,19 @@ void genera_nodi()
                 /*
                   Informo il padre che è nato un nodo
                 */
-                //convert sem_nodes_id to char
-                char sem_nodes_id_char[10];
+                /*convert sem_nodes_id to char*/
+               
                 sprintf(sem_nodes_id_char,"%d",sem_nodes_id);
                 node_arguments[0]=sem_nodes_id_char;
-                node_arguments[1]="1";
-                printf("superata if\n");
-                // node_arguments[1] = 0;
-                // char sem_nodes_id_char[10];
-                // sprintf(sem_nodes_id_char,"%c",sem_nodes_id);
-                // node_arguments[2] = sem_nodes_id_char;
+                /*node_arguments[1]=;*/
 
-                // node_pids[i] = getpid();
-                printf("superato node_arguments e pid\n");
+                node_pids[i] = getpid();
 
                 /* INSTANZIARE CON EXECVE IL NODO, Passare parametri */
                 
-                if (execve("./nodo", node_arguments, NULL) == -1)
+                if (execve(NODE_NAME, node_arguments, NULL) == -1)
                     perror("Could not execve");
-                //delete semaphore
-                
+
             case -1:
                 TEST_ERROR;
                 exit(EXIT_FAILURE);
@@ -159,13 +152,15 @@ void genera_nodi()
 void genera_utenti()
 {
     int i;
+
+    printf("Valore semaforo: %d\n", semctl(sem_nodes_id,1,GETVAL));
     semop(sem_nodes_id, &sops, -1);
     for (i = 0; i < SO_USERS_NUM; i++)
     {
         switch (fork())
         {
         case 0:
-        //operazione su semaforo -1
+        /*operazione su semaforo -1*/
             /* Passare parametri per creazioni*/
             printf("pid user: %d", getpid());
             printf("\n");
@@ -178,4 +173,5 @@ void genera_utenti()
             break;
         }
     }
+    semctl(sem_nodes_id, 0, IPC_RMID, 0);
 }
