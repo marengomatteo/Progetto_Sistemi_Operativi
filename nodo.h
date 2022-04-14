@@ -1,5 +1,7 @@
-#pragma once 
-
+#pragma once
+#include <stdlib.h>
+#include <stdio.h>
+#include <stddef.h>
  typedef struct {
     int timestamp;
     int sender;
@@ -7,53 +9,44 @@
     int amount;
     int reward;
 } transaction;
+void transaction_print (transaction d){
+    printf("\t%d,\n\t%d,\n\t%d,\n\t%d,\n\t%d\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
 
+}
+ transaction* new_transaction(int timestamp, int sender, int receiver, int amount, int reward){
+    transaction *d = malloc(sizeof(transaction));
+    d->timestamp = timestamp;
+    d->sender = sender;
+    d->receiver = receiver;
+    d->amount = amount;
+    d->reward = reward;
+    return d;
+}
 typedef struct _node {
   transaction transaction;
   struct _node *next;
 } node;
+typedef node *list;
 
-typedef node *transaction_pool;
+void l_add_transaction(transaction d, list* l){
+  node *n = (node*)malloc(sizeof(node));
+  n->transaction = d;
+  n->next = *l;
+  *l = n;
+}
+int l_length(list l){
+  int length = 0;
+  while(l != NULL){
+    length++;
+    l = l->next;
+  }
+  return length;
+}
 
-// transaction_pool l_add_at(int i, transaction d, transaction_pool l){
-// // cond: i in [0,n] dove n è la dimensione della lista l
-// 	if (l==NULL){ // lista vuota: ammesso solo inserimento in posizione 0
-// 	   if (i==0){	
-// 		   printf("adding at the head\n");
-// 	      node *el = (node *)malloc(sizeof(node));
-// 	      el->d = d;
-// 	      el->next=NULL;
-// 	      l=el;
-// 	   }
-// 	}else{ // la lista l ha almeno un elemento
-// 	   node *el = (node *)malloc(sizeof(node));
-// 	   el->d = d;
-// 	   if (i==0){ // caso limite: inserisco in testa (posizione 0)
-// 	      el->next=l;
-// 	      l = el;
-// 	   }else{
-//               node *p=l;
-// 	      int j = 1;
-// 	       // p punta al nodo alla posizione j-1
-// 	      while(p!=NULL && j!=i){
-// 		    p=p->next;
-//           	    j++;
-// 	      }
-// 	      if (p!=NULL){
-// 	            node *t=p->next;
-//                     p->next = el;
-// 		    el->next = t;
-// 	      }   
-
-// 	   }
-// 	}
-// 	return l;
-// }
-
-// void l_print(list l){
-// 	printf("(");
-// 	for ( ; l!=NULL ; l=l->next)
-// 	   printf("%d, ",*(l->d));
-// 	printf("\b\b)\n");
-// }
+void l_print(list l){
+	printf("{\n");
+	for ( ; l!=NULL ; l=l->next)
+    transaction_print(l->transaction);
+	printf("\b\b},\n");
+}
 

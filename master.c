@@ -53,8 +53,8 @@
 #define ID_GO 1    /* padre pronto: figli possono procedere */
 
 /* ID IPC Semaforo globale */
-int sem_nodes_id;
-struct sembuf sops;
+/*int sem_nodes_id;
+struct sembuf sops;*/
 int node_param_id;
 int user_param_id;
 
@@ -71,13 +71,13 @@ void alarmHandler(int sig)
     alarm(1);
 }
 
-int main()
+int main(int argc, char **argv, char **envp)
 {
     /* Inizializzo array per i pid dei nodi creati */
     node_pids = malloc(SO_NODES_NUM * sizeof(int));
     
     
-    if((sem_nodes_id = semget(IPC_PRIVATE, 1, 0600)) == -1)
+   /* if((sem_nodes_id = semget(IPC_PRIVATE, 1, 0600)) == -1)
     {
         printf("Errore nella creazione del semaforo\n");
         exit(EXIT_FAILURE);
@@ -87,28 +87,26 @@ int main()
         printf("Errore nell'inizializzazione del semaforo\n");
         exit(EXIT_FAILURE);
     }
-     sops.sem_num = ID_READY;
-       
-    genera_nodi();
-    
+    sops.sem_num = ID_READY;*/
     /* if (signal(SIGALRM, alarmHandler) == SIG_ERR)
     {
         printf("\nErrore della disposizione dell'handler\n");
         exit(EXIT_FAILURE);
      }
      alarm(2);*/
+
+    genera_nodi(envp);
     genera_utenti();
 
-
+    return 0;
 
 }
 
-void genera_nodi()
+void genera_nodi(char **envp)
 {
     int i;
     char sem_nodes_id_char[10];
     printf("\nGenerazione nodi\n");
-    printf("\n ENV = %d\n", SO_NODES_NUM);
     /* SEMAFORO QUI PER I NODI (DOPO LA FORK ASPETTO CHE VENGA GENERATA ALMENO LA CODA DI MESSAGGI/ SETUP INIZIALE DEI NODI) */
    
 
@@ -124,15 +122,15 @@ void genera_nodi()
                 */
                 /*convert sem_nodes_id to char*/
                
-                sprintf(sem_nodes_id_char,"%d",sem_nodes_id);
+                /*sprintf(sem_nodes_id_char,"%d",sem_nodes_id);
                 node_arguments[0]=sem_nodes_id_char;
-                /*node_arguments[1]=;*/
+                node_arguments[1]=;*/
 
                 node_pids[i] = getpid();
 
                 /* INSTANZIARE CON EXECVE IL NODO, Passare parametri */
                 
-                if (execve(NODE_NAME, node_arguments, NULL) == -1)
+                if (execve(NODE_NAME, node_arguments, envp) == -1)
                     perror("Could not execve");
 
             case -1:
@@ -143,7 +141,7 @@ void genera_nodi()
             break;
         }
     }
-    semop(sem_nodes_id, &sops, SO_USERS_NUM);
+    /*semop(sem_nodes_id, &sops, SO_USERS_NUM);*/
 
 
 
@@ -153,8 +151,8 @@ void genera_utenti()
 {
     int i;
 
-    printf("Valore semaforo: %d\n", semctl(sem_nodes_id,1,GETVAL));
-    semop(sem_nodes_id, &sops, -1);
+    /*printf("Valore semaforo: %d\n", semctl(sem_nodes_id,1,GETVAL));
+    semop(sem_nodes_id, &sops, -1);*/
     for (i = 0; i < SO_USERS_NUM; i++)
     {
         switch (fork())
@@ -173,5 +171,5 @@ void genera_utenti()
             break;
         }
     }
-    semctl(sem_nodes_id, 0, IPC_RMID, 0);
+    /*semctl(sem_nodes_id, 0, IPC_RMID, 0);*/
 }
