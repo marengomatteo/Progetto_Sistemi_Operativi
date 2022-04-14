@@ -2,13 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stddef.h>
- typedef struct {
-    int timestamp;
-    int sender;
-    int receiver;
-    int amount;
-    int reward;
-} transaction;
+
+
 void transaction_print (transaction d){
     printf("\t%d,\n\t%d,\n\t%d,\n\t%d,\n\t%d\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
 

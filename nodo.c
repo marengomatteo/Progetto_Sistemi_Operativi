@@ -17,6 +17,7 @@
 #define SH_PARAM_ID 
 #define SO_TP_SIZE atoi(getenv("SO_TP_SIZE")) 
 #define SH_NODES_ID atoi(argv[1])
+#define SH_SEM_ID atoi(argv[2])
 #define NODE_ID atoi(argv[3])
 
 #define TEST_ERROR                                 \
@@ -37,20 +38,21 @@
 #define ID_READY 0;
 
 node_struct *nodes;
+struct sembuf sops;
 
 int main(int argc, char *argv[])
 {
     /* Mi attacco alle memorie condivise */
-    printf("AAAAA %d",SH_NODES_ID);
     nodes = shmat(SH_NODES_ID, NULL, SHM_RDONLY);
     TEST_ERROR;
 
-    printf("MADONNA PUTTANA %d", nodes[NODE_ID].pid);
-
     /* Devo crearmi la coda di messaggi */
+    nodes[NODE_ID].id_mq = msgget(getpid(), 0600 | IPC_CREAT);
 
     /* semop con id che punta al semaforo per poter notificare al padre 
     che il nodo ha creato la sua coda di messaggi */
+    sops.sem_op = 1;
+    semop(SH_SEM_ID, &sops, 1);
 
     /*Create transaction pool list*/
     list transaction_pool=NULL;
@@ -60,7 +62,7 @@ int main(int argc, char *argv[])
     printf("transaction length: %d",l_length(transaction_pool));
     if(SO_TP_SIZE<l_length(transaction_pool)){
         printf("Transaction pool is full\n");
-        return;
+        return 0;
     }
     
     exit(EXIT_SUCCESS);
