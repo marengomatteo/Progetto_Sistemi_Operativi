@@ -28,9 +28,9 @@ typedef struct _node {
 } node;
 typedef node *list;
 
-void l_add_transaction(transaction d, list* l){
+void l_add_transaction(transaction *d, list* l){
   node *n = (node*)malloc(sizeof(node));
-  n->transaction = d;
+  n->transaction = *d;
   n->next = *l;
   *l = n;
 }

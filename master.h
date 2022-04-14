@@ -11,5 +11,14 @@ nell'unità di conversione*/
     int amount;
     int reward;
 };
-void genera_nodi();
+#define SO_USERS_NUM atoi(getenv("SO_USERS_NUM"))
+#define SO_NODES_NUM atoi(getenv("SO_NODES_NUM"))
+
+void genera_nodi(char ** envp);
 void genera_utenti();
+static void shm_print_stats(int fd, int m_id);
+
+struct shared_id{
+    pid_t users_id[10];  
+	pid_t nodes_id[10];
+};
