@@ -4,21 +4,19 @@ nell'unità di conversione*/
 #pragma once 
 
 /*Definizione di una struct transaction*/
- struct transaction {
+typedef struct transaction {
     int timestamp;
     int sender;
     int receiver;
     int amount;
     int reward;
-};
-#define SO_USERS_NUM atoi(getenv("SO_USERS_NUM"))
-#define SO_NODES_NUM atoi(getenv("SO_NODES_NUM"))
+} transaction;
+
+typedef struct node_struct {
+    int pid;
+    int id_mq;
+} node_struct;
 
 void genera_nodi(char ** envp);
 void genera_utenti();
 static void shm_print_stats(int fd, int m_id);
-
-struct shared_id{
-    pid_t users_id[10];  
-	pid_t nodes_id[10];
-};
