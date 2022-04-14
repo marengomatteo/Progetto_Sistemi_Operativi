@@ -59,7 +59,8 @@ int node_param_id;
 int user_param_id;
 
 /* Array per tener traccia delle risorse create SHAREDMEMORY */
-int *sh_mem_sources;
+struct shared_id *sh_mem_sources;
+int m_id;
 
 char *node_arguments[5];
 
@@ -82,10 +83,23 @@ void alarmHandler(int sig)
 
 int main()
 {
+  
     /* Inizializzo array per i pid dei nodi creati */
     node_pids = malloc(SO_NODES_NUM * sizeof(int));
-    
-    sem_nodes_id = semget(IPC_PRIVATE, 1, 0600);
+	
+    /* Create a shared memory area */
+    m_id = shmget(IPC_PRIVATE, sizeof(*sh_mem_sources), 0600);
+	TEST_ERROR;
+	/* Attach the shared memory to a pointer */
+	sh_mem_sources = shmat(m_id, NULL, 0);
+	TEST_ERROR;
+
+	shm_print_stats(2, m_id);
+
+    genera_nodi();
+    genera_utenti();
+
+    /*sem_nodes_id = semget(IPC_PRIVATE, 1, 0600);
     
     if(sem_nodes_id == -1)
     {
@@ -96,8 +110,7 @@ int main()
     {
         printf("Errore nell'inizializzazione del semaforo\n");
         exit(EXIT_FAILURE);
-    }
-    genera_nodi();
+    }*/
 
     /* if (signal(SIGALRM, alarmHandler) == SIG_ERR)
     {
@@ -105,17 +118,16 @@ int main()
         exit(EXIT_FAILURE);
      }
      alarm(2);*/
-    genera_utenti();
+
 }
 
 void genera_nodi()
 {
     int i;
-    char sem_nodes_id_char[10];
     printf("\nGenerazione nodi\n");
     /* SEMAFORO QUI PER I NODI (DOPO LA FORK ASPETTO CHE VENGA GENERATA ALMENO LA CODA DI MESSAGGI/ SETUP INIZIALE DEI NODI) */
-    sops.sem_num = ID_READY;
-    sops.sem_op = 1;
+    /*sops.sem_num = ID_READY;
+    sops.sem_op = 1;*/
 
     for (i = 0; i < 5; i++)
     {
@@ -129,9 +141,9 @@ void genera_nodi()
                 */
                 /*convert sem_nodes_id to char*/
                
-                sprintf(sem_nodes_id_char,"%d",sem_nodes_id);
+                /*sprintf(sem_nodes_id_char,"%d",sem_nodes_id);
                 node_arguments[0]=sem_nodes_id_char;
-                /*node_arguments[1]=;*/
+                node_arguments[1]=;*/
 
                 node_pids[i] = getpid();
 
@@ -148,30 +160,58 @@ void genera_nodi()
             break;
         }
     }
-    semop(sem_nodes_id, &sops, SO_USERS_NUM);
+   /* semop(sem_nodes_id, &sops, SO_USERS_NUM);*/
 
 }
 
 void genera_utenti()
 {
     int i;
-    semop(sem_nodes_id, &sops, -1);
+   /* semop(sem_nodes_id, &sops, -1);*/
     for (i = 0; i < SO_USERS_NUM; i++)
     {
         switch (fork())
         {
-        case 0:
-        /*operazione su semaforo -1*/
-            /* Passare parametri per creazioni*/
-            printf("pid user: %d", getpid());
-            printf("\n");
-            exit(EXIT_SUCCESS);
-        /* execve();*/
-        case -1:
-            TEST_ERROR;
-        default:
+            case 0:
+            /*operazione su semaforo -1*/
+                /* Passare parametri per creazioni*/
+                printf("pid user: %d", getpid());
+                printf("\n");
+                exit(EXIT_SUCCESS);
+            /* execve();*/
+            case -1:
+                TEST_ERROR;
+            default:
 
-            break;
+                break;
         }
     }
+}
+
+
+
+static void shm_print_stats(int fd, int m_id) {
+	struct shmid_ds my_m_data;
+	int ret_val;
+	ret_val = shmctl(m_id, IPC_STAT, &my_m_data);
+
+	while (shmctl(m_id, IPC_STAT, &my_m_data)) {
+		TEST_ERROR;
+	}
+	dprintf(fd, "--- IPC Shared Memory ID: %8d, START ---\n", m_id);
+	dprintf(fd, "---------------------- Memory size: %ld\n",
+		my_m_data.shm_segsz);
+	dprintf(fd, "---------------------- Time of last attach: %ld\n",
+		my_m_data.shm_atime);
+	dprintf(fd, "---------------------- Time of last detach: %ld\n",
+		my_m_data.shm_dtime); 
+	dprintf(fd, "---------------------- Time of last change: %ld\n",
+		my_m_data.shm_ctime); 
+	dprintf(fd, "---------- Number of attached processes: %ld\n",
+		my_m_data.shm_nattch);
+	dprintf(fd, "----------------------- PID of creator: %d\n",
+		my_m_data.shm_cpid);
+	dprintf(fd, "----------------------- PID of last shmat/shmdt: %d\n",
+		my_m_data.shm_lpid);
+	dprintf(fd, "--- IPC Shared Memory ID: %8d, END -----\n", m_id);
 }
