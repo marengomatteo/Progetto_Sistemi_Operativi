@@ -10,25 +10,55 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/msg.h>
+
+#include "master.h"
 #include "nodo.h"
 
 #define SH_PARAM_ID 
-#define SO_TP_SIZE 1
-#define SM_PARAM_ID
+#define SO_TP_SIZE atoi(getenv("SO_TP_SIZE")) 
+#define SH_NODES_ID atoi(argv[1])
+#define SH_SEM_ID
+#define NODE_ID atoi(argv[3])
+
+#define TEST_ERROR                                 \
+    if (errno)                                     \
+    {                                              \
+        fprintf(stderr,                            \
+                "%s:%d: PID=%5d: Error %d (%s)\n", \
+                __FILE__,                          \
+                __LINE__,                          \
+                getpid(),                          \
+                errno,                             \
+                strerror(errno));                  \
+        errno = 0;                                 \
+        fflush(stderr);                            \
+    }
 
 /*Semaforo per segnalare che i nodi sono pronti*/
 #define ID_READY 0;
 
+node_struct *nodes;
+/*Create transaction pool list*/
+list transaction_pool=NULL;
+
 int main(int argc, char *argv[])
 {
-    /*Create transaction pool list*/
-    list transaction_pool=NULL;
+    /* Mi attacco alle memorie condivise */
+    nodes = shmat(SH_NODES_ID, NULL, SHM_RDONLY);
+    TEST_ERROR;
+
+    /* Devo crearmi la coda di messaggi */
+    nodes[NODE_ID].id_mq = msgget(getpid(), 0600 | IPC_CREAT);
+
+    /* semop con id che punta al semaforo per poter notificare al padre 
+    che il nodo ha creato la sua coda di messaggi */
+
     printf("\ncreato pid nodo: %d\n",getpid());
     /*Aggiungo transazione da processare*/
      printf("transaction length: %d\n",l_length(transaction_pool));
     if(SO_TP_SIZE<l_length(transaction_pool)){
         printf("Transaction pool is full\n");
-        return;
+        return 0;
     }l_add_transaction(new_transaction(1,1,2,1,1),&transaction_pool);
    l_add_transaction(new_transaction(4,4,2,1,1),&transaction_pool);
     printf("transaction length: %d\n",l_length(transaction_pool));
