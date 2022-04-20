@@ -32,5 +32,5 @@ nodo.o: nodo.c
 clean:
 	rm -f *.o
 
-run:
-	./master 
+run: 
+	./master

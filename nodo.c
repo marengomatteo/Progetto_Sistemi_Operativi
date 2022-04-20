@@ -42,8 +42,11 @@ struct sembuf sops;
 
 int main(int argc, char *argv[])
 {
+   /* printf("Nodo %d inizializzato\n", NODE_ID);
+    printf("Memoria condivisa: %d\n", SH_NODES_ID);*/
+
     /* Mi attacco alle memorie condivise */
-    nodes = shmat(SH_NODES_ID, NULL, SHM_RDONLY);
+    nodes = shmat(SH_NODES_ID, NULL, 0);
     TEST_ERROR;
 
     /* Devo crearmi la coda di messaggi */
@@ -56,10 +59,12 @@ int main(int argc, char *argv[])
 
     /*Create transaction pool list*/
     list transaction_pool=NULL;
-    printf("\ncreato pid nodo: %d\n",getpid());
+    
+    
     /*Aggiungo transazione da processare*/
     l_add_transaction(new_transaction(1,1,2,1,1),&transaction_pool);
-    printf("transaction length: %d",l_length(transaction_pool));
+    printf("transaction length: %d\n",l_length(transaction_pool));
+
     if(SO_TP_SIZE<l_length(transaction_pool)){
         printf("Transaction pool is full\n");
         return 0;

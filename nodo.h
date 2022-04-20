@@ -6,9 +6,9 @@
 
 void transaction_print (transaction d){
     printf("\t%d,\n\t%d,\n\t%d,\n\t%d,\n\t%d\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
-
 }
- transaction* new_transaction(int timestamp, int sender, int receiver, int amount, int reward){
+
+transaction* new_transaction(int timestamp, int sender, int receiver, int amount, int reward){
     transaction *d = malloc(sizeof(transaction));
     d->timestamp = timestamp;
     d->sender = sender;
@@ -17,10 +17,12 @@ void transaction_print (transaction d){
     d->reward = reward;
     return d;
 }
+
 typedef struct _node {
   transaction transaction;
   struct _node *next;
 } node;
+
 typedef node *list;
 
 void l_add_transaction(transaction *d, list* l){
