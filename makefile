@@ -1,4 +1,3 @@
-
 export CC="gcc"
 export CFLAGS= "-std=c89 -pedantic"
 
@@ -21,12 +20,12 @@ master: master.o nodo
 	${CC} -o master master.o
 
 nodo: nodo.o
-	${CC} -o nodo nodo.o
+	${CC} -o nodo nodo.c
 
 master.o: master.c master.h
 	${CC} -c -std=c89 -pedantic master.c
 
-nodo.o: nodo.c
+nodo.o: nodo.c nodo.h
 	${CC} -c -std=c89 -pedantic nodo.c
 
 clean:

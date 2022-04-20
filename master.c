@@ -92,9 +92,9 @@ int main(int argc, char **argv, char **envp)
     genera_nodi(envp);
     genera_utenti();
     return 0;
-    /*sem_nodes_id = semget(IPC_PRIVATE, 1, 0600);
+    sem_nodes_id = semget(IPC_PRIVATE, 1, 0600);
 
-   /* if((sem_nodes_id = semget(IPC_PRIVATE, 1, 0600)) == -1)
+    if((sem_nodes_id = semget(IPC_PRIVATE, 1, 0600)) == -1)
     {
         printf("Errore nella creazione del semaforo\n");
         exit(EXIT_FAILURE);
@@ -103,7 +103,7 @@ int main(int argc, char **argv, char **envp)
     {
         printf("Errore nell'inizializzazione del semaforo\n");
         exit(EXIT_FAILURE);
-    }*/
+    }
 
     /* if (signal(SIGALRM, alarmHandler) == SIG_ERR)
     {
@@ -121,17 +121,17 @@ void genera_nodi(char **envp)
     printf("\nGenerazione nodi\n");
     /* SEMAFORO QUI PER I NODI (DOPO LA FORK ASPETTO CHE VENGA GENERATA ALMENO LA CODA DI MESSAGGI/ SETUP INIZIALE DEI NODI) */
   
-    /*sprintf(sem_n_id, "%d", sem_nodes_id);*/
-    /*node_arguments[2] = sem_n_id;*/
+    /*sprintf(sem_n_id, "%d", sem_nodes_id);
+    node_arguments[3] = sem_n_id;*/
     for (i = 0; i < SO_NODES_NUM; i++)
     {
         switch (fork())
         {
         case 0:
             printf("\nCreato nodo %d\n", getpid());
-            /*sprintf(node_id, "%d", i);
+            sprintf(node_id, "%d", i);
             node_arguments[3] = node_id;
-            nodes[i].pid = getpid();*/
+            nodes[i].pid = getpid();
 
             /* INSTANZIARE CON EXECVE IL NODO, Passare parametri */
 
@@ -152,7 +152,7 @@ void genera_nodi(char **envp)
 void genera_utenti()
 {
     int i;
-    /* semop(sem_nodes_id, &sops, -1);*/
+    /*ssemop(sem_nodes_id, &sops, -1);*/
     for (i = 0; i < SO_USERS_NUM; i++)
     {
         switch (fork())
@@ -167,7 +167,6 @@ void genera_utenti()
         case -1:
             TEST_ERROR;
         default:
-
             break;
         }
     }
