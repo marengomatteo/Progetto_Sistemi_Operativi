@@ -81,6 +81,7 @@ int main(int argc, char **argv, char **envp)
     /* Create a shared memory area for nodes struct */
     shared_nodes_id = shmget(IPC_PRIVATE, SO_NODES_NUM * sizeof(int), 0600);
     TEST_ERROR;
+    printf("shared memory: %d", shared_nodes_id);
     /* Attach the shared memory to a pointer */
     nodes = (node_struct *)shmat(shared_nodes_id, NULL, 0);
     TEST_ERROR;
@@ -93,17 +94,6 @@ int main(int argc, char **argv, char **envp)
     genera_utenti();
     return 0;
     sem_nodes_id = semget(IPC_PRIVATE, 1, 0600);
-
-    if((sem_nodes_id = semget(IPC_PRIVATE, 1, 0600)) == -1)
-    {
-        printf("Errore nella creazione del semaforo\n");
-        exit(EXIT_FAILURE);
-    }
-    if(semctl(sem_nodes_id, 0, SETVAL, 0) == -1)
-    {
-        printf("Errore nell'inizializzazione del semaforo\n");
-        exit(EXIT_FAILURE);
-    }
 
     /* if (signal(SIGALRM, alarmHandler) == SIG_ERR)
     {
@@ -119,6 +109,7 @@ void genera_nodi(char **envp)
     int i;
 
     printf("\nGenerazione nodi\n");
+
     /* SEMAFORO QUI PER I NODI (DOPO LA FORK ASPETTO CHE VENGA GENERATA ALMENO LA CODA DI MESSAGGI/ SETUP INIZIALE DEI NODI) */
   
     /*sprintf(sem_n_id, "%d", sem_nodes_id);
@@ -142,6 +133,10 @@ void genera_nodi(char **envp)
             TEST_ERROR;
             exit(EXIT_FAILURE);
         default:
+            
+            sops.sem_num = 0;
+            sops.sem_op = -1;
+            semop(sem_nodes_id, &sops, 1);
             TEST_ERROR;
             break;
         }
