@@ -12,8 +12,10 @@
 #include <sys/shm.h>
 #include <sys/msg.h>
 
-#define SH_PARAM_ID atoi(argv[1])
+/*#define SH_PARAM_ID atoi(argv[1])
+#define SO_BUDGET_INIT atoi(getenv("SO_BUDGET_INIT"))*/
 
 int main(int argc, char *argv[])
 {
+    printf("main user\n");
 }

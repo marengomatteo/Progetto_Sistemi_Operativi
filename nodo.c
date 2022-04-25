@@ -49,24 +49,8 @@ struct sembuf sops;
 list transaction_pool;
 
 int main(int argc, char *argv[])
-{
-
-    struct timespec ts;    
-    struct timespec tm;    
-    clock_gettime(CLOCK_REALTIME, &ts);
-    clock_gettime(CLOCK_MONOTONIC, &tm);
-    printf("DATA REALTIME: %ld\n", ts.tv_nsec);
-    printf("DATA MONOTONIC: %ld\n", tm.tv_nsec);
-    /*Aggiungo transazione da processare*/
-    l_add_transaction(new_transaction(ts.tv_nsec,REWARD_SENDER,getpid(), block_reward,0),&transaction_pool);
-    
-    /*printf("transaction length: %d\n",l_length(transaction_pool));*/
-
-    if(SO_TP_SIZE<l_length(transaction_pool)){
-        printf("Transaction pool is full\n");
-        return 0;
-    }
-   
+{    
+  
     /* Mi attacco alle memorie condivise */
     nodes = shmat(SH_NODES_ID, NULL, 0);
     TEST_ERROR;
@@ -85,12 +69,18 @@ int main(int argc, char *argv[])
     sops.sem_op = 1;
     semop(SH_SEM_ID, &sops, 1);
 
+    clock_gettime(CLOCK_REALTIME, &timestamp);
+    TEST_ERROR;
+    /*Prelevo dalla coda SO_TP_SIZE-1 transazioni */
     if(SO_TP_SIZE<l_length(transaction_pool)){
         printf("Transaction pool is full\n");
         return 0;
     }
 
+    /*Aggiungo transazione di reward*/
+    l_add_transaction(new_transaction(timestamp.tv_nsec,REWARD_SENDER,getpid(), block_reward,0),&transaction_pool);
 
-   exit(EXIT_SUCCESS);
-   
+    msgctl(nodes[NODE_ID].id_mq,0,IPC_RMID);
+    TEST_ERROR;
+    exit(EXIT_SUCCESS); 
 }

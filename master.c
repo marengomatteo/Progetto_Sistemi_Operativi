@@ -32,7 +32,6 @@
 
 #define SO_USERS_NUM 2 /* atoi(getenv("SO_USERS_NUM"))*/
 #define SO_NODES_NUM 2 /* atoi(getenv("SO_NODES_NUM"))*/
-#define SO_BUDGET_INIT atoi(getenv("SO_BUDGET_INIT"))
 #define SO_REWARD atoi(getenv("SO_REWARD"))
 #define SO_MIN_TRANS_GEN_NSEC atoi(getenv("SO_MIN_TRANS_GEN_NSEC"))
 #define SO_MAX_TRANS_GEN_NSEC atoi(getenv("SO_MAX_TRANS_GEN_NSEC"))
@@ -61,11 +60,17 @@ int node_param_id;
 int user_param_id;
 
 /* Array per tener traccia delle risorse create SHAREDMEMORY */
-int shared_nodes_id;
+int shared_nodes_id; /* id memoria condivisa dei nodi*/
+int shared_masterbook_id; /* id mlibro mastro*/
+int shared_users_id; /* id memoria condivisa degli user*/
 
 char *node_arguments[5] = {NODE_NAME};
+char *user_arguments[5] = {USER_NAME};
 
 node_struct *nodes;
+masterbook *master_book;
+user_struct *user;
+
 
 void alarmHandler(int sig)
 {
@@ -75,27 +80,45 @@ void alarmHandler(int sig)
 
 int main(int argc, char **argv, char **envp)
 {
-
     char id_argument_sm_nodes[3 * sizeof(int) + 1]; /*id memoria condivisa nodi*/
+    char id_argument_sm_masterbook[3 * sizeof(int) + 1]; /*id memoria condivisa master book*/
+    char id_argument_sm_users[3 * sizeof(int) + 1]; /*id memoria condivisa user*/
 
     /* Create a shared memory area for nodes struct */
     shared_nodes_id = shmget(IPC_PRIVATE, SO_NODES_NUM * sizeof(int), 0600);
     TEST_ERROR;
-    printf("shared memory: %d", shared_nodes_id);
     /* Attach the shared memory to a pointer */
     nodes = (node_struct *)shmat(shared_nodes_id, NULL, 0);
     TEST_ERROR;
 
-    sprintf(id_argument_sm_nodes, "%d", shared_nodes_id);
+    /* Creazione masterbook */
+    shared_masterbook_id = shmget(IPC_PRIVATE, SO_REGISTRY_SIZE * SO_BLOCK_SIZE*sizeof(transaction), 0600);
+    TEST_ERROR;
+    master_book =(masterbook*)shmat(shared_masterbook_id, NULL, 0);
+    TEST_ERROR;
 
+    /* Creazione memoria condivisa per user*/
+    shared_users_id = shmget(IPC_PRIVATE, SO_USERS_NUM*sizeof(int),0600);
+    TEST_ERROR;
+    user = (user_struct*)shmat(shared_masterbook_id, NULL,0);
+    TEST_ERROR;
+
+    /*Converte da int a char gli id delle memorie condivise*/
+    sprintf(id_argument_sm_nodes, "%d", shared_nodes_id);
+    sprintf(id_argument_sm_masterbook,"%d",shared_masterbook_id);
+    sprintf(id_argument_sm_users,"%d",shared_users_id);
     node_arguments[1] = id_argument_sm_nodes;
+    user_arguments[1] = id_argument_sm_users;
 
     genera_nodi(envp);
-    genera_utenti();
-    sem_nodes_id = semget(IPC_PRIVATE, 1, 0600);
+    genera_utenti(envp);
 
     /*Rimuovo semaforo*/
     semctl(sem_nodes_id,0, IPC_RMID);
+    shmctl(shared_nodes_id,0, IPC_RMID);
+    shmctl(shared_masterbook_id,0, IPC_RMID);
+    shmctl(shared_users_id,0, IPC_RMID);
+
     /* if (signal(SIGALRM, alarmHandler) == SIG_ERR)
     {
         printf("\nErrore della disposizione dell'handler\n");
@@ -113,6 +136,7 @@ void genera_nodi(char **envp)
     printf("\nGenerazione nodi\n");
 
     /* SEMAFORO QUI PER I NODI (DOPO LA FORK ASPETTO CHE VENGA GENERATA ALMENO LA CODA DI MESSAGGI/ SETUP INIZIALE DEI NODI) */
+    sem_nodes_id = semget(IPC_PRIVATE, 1, 0600);
     TEST_ERROR;
     semctl(sem_nodes_id, 0, SETVAL, 1);
     TEST_ERROR;
@@ -148,7 +172,7 @@ void genera_nodi(char **envp)
     /*semop(sem_nodes_id, &sops, SO_USERS_NUM);*/
 }
 
-void genera_utenti()
+void genera_utenti(char** envp)
 {
     int i;
     /*semop(sem_nodes_id, &sops, -1);*/
@@ -157,12 +181,10 @@ void genera_utenti()
         switch (fork())
         {
         case 0:
-            /*operazione su semaforo -1*/
-            /* Passare parametri per creazioni*/
-            printf("pid user: %d", getpid());
-            printf("\n");
-            exit(EXIT_SUCCESS);
-        /* execve();*/
+            printf("\nCreato user %d\n", getpid());
+            user_arguments[3] = (char)getpid();
+            if (execve(USER_NAME, user_arguments, envp) == -1)
+                perror("Could not execve");
         case -1:
             TEST_ERROR;
         default:
