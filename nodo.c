@@ -50,9 +50,24 @@ list transaction_pool;
 
 int main(int argc, char *argv[])
 {
+
+    struct timespec ts;    
+    struct timespec tm;    
+    clock_gettime(CLOCK_REALTIME, &ts);
+    clock_gettime(CLOCK_MONOTONIC, &tm);
+    printf("DATA REALTIME: %ld\n", ts.tv_nsec);
+    printf("DATA MONOTONIC: %ld\n", tm.tv_nsec);
+    /*Aggiungo transazione da processare*/
+    l_add_transaction(new_transaction(ts.tv_nsec,REWARD_SENDER,getpid(), block_reward,0),&transaction_pool);
+    
+    /*printf("transaction length: %d\n",l_length(transaction_pool));*/
+
+    if(SO_TP_SIZE<l_length(transaction_pool)){
+        printf("Transaction pool is full\n");
+        return 0;
+    }
    
     /* Mi attacco alle memorie condivise */
-    /* TODO: Da capire perché non si attacca*/
     nodes = shmat(SH_NODES_ID, NULL, 0);
     TEST_ERROR;
     /*printf("\n mi sono connesso alla memoria condivisa con id: %d\n", SH_NODES_ID);
@@ -70,40 +85,12 @@ int main(int argc, char *argv[])
     sops.sem_op = 1;
     semop(SH_SEM_ID, &sops, 1);
 
-    /* if(SO_TP_SIZE<l_length(transaction_pool)){
+    if(SO_TP_SIZE<l_length(transaction_pool)){
         printf("Transaction pool is full\n");
         return 0;
-    }*/
+    }
 
 
    exit(EXIT_SUCCESS);
    
 }
-
-
-/*void add_transaction_to_master_book(){
-    
-    clockid_t clock_id;
-    struct timespec *res;
-    int time;
-
-    clock_id = CLOCK_MONOTONIC;
-    time = clock_gettime (clock_id, res);
-    if (time == -1)
-    {
-        perror ("clock_gettime");
-        exit (EXIT_FAILURE);
-    }
-    
-    /*Aggiungo transazione da processare
-    l_add_transaction(new_transaction(5,REWARD_SENDER,getpid(), block_reward,0),&transaction_pool);
-    semop(SH_SEM_ID, &sops, 1);
-    
-    printf("transaction length: %d\n",l_length(transaction_pool));
-
-    if(SO_TP_SIZE<l_length(transaction_pool)){
-        printf("Transaction pool is full\n");
-        return 0;
-    }
-   l_print(transaction_pool);
-}*/

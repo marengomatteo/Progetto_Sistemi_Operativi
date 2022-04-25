@@ -92,7 +92,10 @@ int main(int argc, char **argv, char **envp)
 
     genera_nodi(envp);
     genera_utenti();
+    sem_nodes_id = semget(IPC_PRIVATE, 1, 0600);
 
+    /*Rimuovo semaforo*/
+    semctl(sem_nodes_id,0, IPC_RMID);
     /* if (signal(SIGALRM, alarmHandler) == SIG_ERR)
     {
         printf("\nErrore della disposizione dell'handler\n");
@@ -110,7 +113,6 @@ void genera_nodi(char **envp)
     printf("\nGenerazione nodi\n");
 
     /* SEMAFORO QUI PER I NODI (DOPO LA FORK ASPETTO CHE VENGA GENERATA ALMENO LA CODA DI MESSAGGI/ SETUP INIZIALE DEI NODI) */
-    sem_nodes_id = semget(IPC_PRIVATE, 1, 0600);
     TEST_ERROR;
     semctl(sem_nodes_id, 0, SETVAL, 1);
     TEST_ERROR;
@@ -142,6 +144,7 @@ void genera_nodi(char **envp)
             break;
         }
     }
+
     /*semop(sem_nodes_id, &sops, SO_USERS_NUM);*/
 }
 
