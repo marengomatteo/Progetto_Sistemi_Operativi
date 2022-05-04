@@ -92,7 +92,7 @@ int main(int argc, char **argv, char **envp)
     TEST_ERROR;
 
     /* Creazione masterbook */
-    shared_masterbook_id = shmget(IPC_PRIVATE, SO_REGISTRY_SIZE * SO_BLOCK_SIZE*sizeof(transaction), 0600);
+    shared_masterbook_id = shmget(IPC_PRIVATE, SO_REGISTRY_SIZE * SO_BLOCK_SIZE*sizeof(block), 0600);
     TEST_ERROR;
     master_book =(masterbook*)shmat(shared_masterbook_id, NULL, 0);
     TEST_ERROR;
@@ -109,6 +109,9 @@ int main(int argc, char **argv, char **envp)
     sprintf(id_argument_sm_users,"%d",shared_users_id);
     node_arguments[1] = id_argument_sm_nodes;
     user_arguments[1] = id_argument_sm_users;
+    node_arguments[4] = id_argument_sm_masterbook;
+    user_arguments[4] = id_argument_sm_masterbook;
+
 
     genera_nodi(envp);
     genera_utenti(envp);

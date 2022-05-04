@@ -14,6 +14,7 @@
 
 /*#define SH_PARAM_ID atoi(argv[1])
 #define SO_BUDGET_INIT atoi(getenv("SO_BUDGET_INIT"))*/
+#define MASTERBOOK_ID atoi(argv[4])
 
 int main(int argc, char *argv[])
 {

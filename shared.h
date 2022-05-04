@@ -1,3 +1,5 @@
+#include <time.h>
+
 typedef struct _transaction {
   int timestamp;
   int sender;
@@ -6,9 +8,12 @@ typedef struct _transaction {
   int reward;
 } transaction;
 
+typedef struct _block{
+  int id_block;
+  transaction* transaction_array;
+} block;
 typedef struct _masterbook{
-  int id_blocksize;
-  transaction* block_transaction;
+  block* block_transaction;
 } masterbook;
 
 int stampaStatoMemoria(int shid) {

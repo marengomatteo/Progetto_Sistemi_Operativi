@@ -33,6 +33,7 @@
 #define SH_NODES_ID atoi(argv[1])
 #define SH_SEM_ID atoi(argv[2])
 #define NODE_ID atoi(argv[3])
+#define MASTERBOOK_ID atoi(argv[4])
 #define REWARD_SENDER -1 
 
 /*Semaforo per segnalare che i nodi sono pronti*/
