@@ -1,13 +1,22 @@
+#include <time.h>
+
 typedef struct _transaction {
-    int timestamp;
-    int sender;
-    int receiver;
-    int amount;
-    int reward;
+  int timestamp;
+  int sender;
+  int receiver;
+  int amount;
+  int reward;
 } transaction;
 
-int stampaStatoMemoria(int shid) {
+typedef struct _block{
+  int id_block;
+  transaction* transaction_array;
+} block;
+typedef struct _masterbook{
+  block* block_transaction;
+} masterbook;
 
+int stampaStatoMemoria(int shid) {
   struct shmid_ds buf;
 
   if (shmctl(shid,IPC_STAT,&buf)==-1) {

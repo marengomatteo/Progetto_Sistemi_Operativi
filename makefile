@@ -16,17 +16,20 @@ export SO_SIM_SEC=10
 export SO_FRIENDS_NUM=3
 export SO_HOPS=10 
 
-master: master.o nodo
+master: master.o nodo user
 	${CC} -o master master.o
 
-nodo: nodo.o
-	${CC} -o nodo nodo.c
+user: user.o
+	${CC} -o user user.c
 
 master.o: master.c master.h
 	${CC} -c -std=c89 -pedantic master.c
 
 nodo.o: nodo.c nodo.h
 	${CC} -c -std=c89 -pedantic nodo.c
+
+user.o: user.c 
+	${CC} -c -std=c89 -pedantic user.c
 
 clean:
 	rm -f *.o
