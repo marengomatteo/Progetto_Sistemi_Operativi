@@ -179,6 +179,7 @@ void genera_nodi(char **envp)
 void genera_utenti(char** envp)
 {
     int i;
+    char* user_id;
     /*semop(sem_nodes_id, &sops, -1);*/
     for (i = 0; i < SO_USERS_NUM; i++)
     {
@@ -186,6 +187,8 @@ void genera_utenti(char** envp)
         {
         case 0:
             printf("\nCreato user %d\n", getpid());
+            sprintf(user_id, "%d", i);
+            user_arguments[4]=user_id;
             if (execve(USER_NAME, user_arguments, envp) == -1)
                 perror("Could not execve");
         case -1:

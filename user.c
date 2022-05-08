@@ -31,6 +31,7 @@
 #define SH_USERS_ID atoi(argv[1])
 #define SH_NODES_ID atoi(argv[2])
 #define MASTERBOOK_ID atoi(argv[3])
+#define USER_ID atoi(argv[4])
 #define SO_NODES_NUM atoi(getenv("SO_NODES_NUM"))
 #define SO_USERS_NUM atoi(getenv("SO_USERS_NUM"))
 #define SO_BUDGET_INIT atoi(getenv("SO_BUDGET_INIT"))
@@ -57,6 +58,7 @@ int main(int argc, char *argv[])
     nodes = shmat(SH_NODES_ID, NULL, 0);
     TEST_ERROR;
     users = shmat(SH_USERS_ID, NULL, 0);
+    users[USER_ID].pid=getpid();
     TEST_ERROR;
     srand(time(NULL));
     exit(EXIT_FAILURE);
