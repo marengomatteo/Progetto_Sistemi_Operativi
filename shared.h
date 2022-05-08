@@ -1,7 +1,7 @@
 #include <time.h>
-
+ #include <sys/shm.h>
 typedef struct _transaction {
-  int timestamp;
+  long timestamp;
   int sender;
   int receiver;
   int amount;

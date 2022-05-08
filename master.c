@@ -31,7 +31,7 @@
     }
 
 #define SO_USERS_NUM 2 /* atoi(getenv("SO_USERS_NUM"))*/
-#define SO_NODES_NUM 2 /* atoi(getenv("SO_NODES_NUM"))*/
+#define SO_NODES_NUM 4 /* atoi(getenv("SO_NODES_NUM"))*/
 #define SO_REWARD atoi(getenv("SO_REWARD"))
 #define SO_MIN_TRANS_GEN_NSEC atoi(getenv("SO_MIN_TRANS_GEN_NSEC"))
 #define SO_MAX_TRANS_GEN_NSEC atoi(getenv("SO_MAX_TRANS_GEN_NSEC"))
@@ -83,6 +83,7 @@ int main(int argc, char **argv, char **envp)
     char id_argument_sm_nodes[3 * sizeof(int) + 1]; /*id memoria condivisa nodi*/
     char id_argument_sm_masterbook[3 * sizeof(int) + 1]; /*id memoria condivisa master book*/
     char id_argument_sm_users[3 * sizeof(int) + 1]; /*id memoria condivisa user*/
+    char id_argument_nodes_num[3 * sizeof(int) + 1]; /*so nodes num*/
 
     /* Create a shared memory area for nodes struct */
     shared_nodes_id = shmget(IPC_PRIVATE, SO_NODES_NUM * sizeof(int), 0600);
@@ -105,12 +106,16 @@ int main(int argc, char **argv, char **envp)
 
     /*Converte da int a char gli id delle memorie condivise*/
     sprintf(id_argument_sm_nodes, "%d", shared_nodes_id);
+    printf("sh nodes id: %d\n", shared_nodes_id);
     sprintf(id_argument_sm_masterbook,"%d",shared_masterbook_id);
     sprintf(id_argument_sm_users,"%d",shared_users_id);
+    sprintf(id_argument_nodes_num,"%d",SO_NODES_NUM);
     node_arguments[1] = id_argument_sm_nodes;
-    user_arguments[1] = id_argument_sm_users;
     node_arguments[4] = id_argument_sm_masterbook;
-    user_arguments[4] = id_argument_sm_masterbook;
+    user_arguments[1] = id_argument_sm_users;
+    user_arguments[2] = id_argument_sm_nodes;
+    user_arguments[3] = id_argument_sm_masterbook;
+    user_arguments[4] = id_argument_nodes_num;
 
 
     genera_nodi(envp);
@@ -118,7 +123,7 @@ int main(int argc, char **argv, char **envp)
 
     /*Rimuovo semaforo*/
     semctl(sem_nodes_id,0, IPC_RMID);
-    shmctl(shared_nodes_id,0, IPC_RMID);
+    /*shmctl(shared_nodes_id,0, IPC_RMID);*/
     shmctl(shared_masterbook_id,0, IPC_RMID);
     shmctl(shared_users_id,0, IPC_RMID);
 
@@ -185,7 +190,6 @@ void genera_utenti(char** envp)
         {
         case 0:
             printf("\nCreato user %d\n", getpid());
-            user_arguments[3] = (char)getpid();
             if (execve(USER_NAME, user_arguments, envp) == -1)
                 perror("Could not execve");
         case -1:
