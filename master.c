@@ -83,10 +83,9 @@ int main(int argc, char **argv, char **envp)
     char id_argument_sm_nodes[3 * sizeof(int) + 1]; /*id memoria condivisa nodi*/
     char id_argument_sm_masterbook[3 * sizeof(int) + 1]; /*id memoria condivisa master book*/
     char id_argument_sm_users[3 * sizeof(int) + 1]; /*id memoria condivisa user*/
-    char id_argument_nodes_num[3 * sizeof(int) + 1]; /*so nodes num*/
 
     /* Create a shared memory area for nodes struct */
-    shared_nodes_id = shmget(IPC_PRIVATE, SO_NODES_NUM * sizeof(int), 0600);
+    shared_nodes_id = shmget(IPC_PRIVATE, SO_NODES_NUM * sizeof(node_struct), 0600);
     TEST_ERROR;
     /* Attach the shared memory to a pointer */
     nodes = (node_struct *)shmat(shared_nodes_id, NULL, 0);
@@ -106,16 +105,13 @@ int main(int argc, char **argv, char **envp)
 
     /*Converte da int a char gli id delle memorie condivise*/
     sprintf(id_argument_sm_nodes, "%d", shared_nodes_id);
-    printf("sh nodes id: %d\n", shared_nodes_id);
     sprintf(id_argument_sm_masterbook,"%d",shared_masterbook_id);
     sprintf(id_argument_sm_users,"%d",shared_users_id);
-    sprintf(id_argument_nodes_num,"%d",SO_NODES_NUM);
     node_arguments[1] = id_argument_sm_nodes;
     node_arguments[4] = id_argument_sm_masterbook;
     user_arguments[1] = id_argument_sm_users;
     user_arguments[2] = id_argument_sm_nodes;
     user_arguments[3] = id_argument_sm_masterbook;
-    user_arguments[4] = id_argument_nodes_num;
 
 
     genera_nodi(envp);

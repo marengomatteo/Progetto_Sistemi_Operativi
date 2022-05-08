@@ -80,7 +80,6 @@ int main(int argc, char *argv[])
 
     /*Aggiungo transazione di reward*/
     l_add_transaction(new_transaction(timestamp.tv_nsec,REWARD_SENDER,getpid(), block_reward,0),&transaction_pool);
-
     msgctl(nodes[NODE_ID].id_mq,0,IPC_RMID);
     TEST_ERROR;
     exit(EXIT_SUCCESS); 

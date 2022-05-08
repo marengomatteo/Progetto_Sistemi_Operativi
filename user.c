@@ -12,6 +12,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/msg.h>
+#include <time.h>
 
 
 #define TEST_ERROR                                 \
@@ -27,26 +28,54 @@
         errno = 0;                                 \
         fflush(stderr);                            \
     }
-#define SH_PARAM_ID atoi(argv[1])
+#define SH_USERS_ID atoi(argv[1])
 #define SH_NODES_ID atoi(argv[2])
 #define MASTERBOOK_ID atoi(argv[3])
-#define SO_NODES_NUM atoi(argv[4])
+#define SO_NODES_NUM atoi(getenv("SO_NODES_NUM"))
+#define SO_USERS_NUM atoi(getenv("SO_USERS_NUM"))
 #define SO_BUDGET_INIT atoi(getenv("SO_BUDGET_INIT"))
+#define SO_REWARD atoi(getenv("SO_REWARD"))
 
-int curr_balance;
+int curr_balance;   
 node_struct* nodes;
+user_struct* users;
 int index_rnode;
 int index_ruser;
+int r_number;
+int calculate_reward;
+struct timespec timestamp;
+
+
+struct msgbuf {
+    long mtype;      
+    transaction* trans;    
+} msg;
 int main(int argc, char *argv[])
 {
+    msg.trans= malloc(sizeof(transaction));
     curr_balance=SO_BUDGET_INIT;
     nodes = shmat(SH_NODES_ID, NULL, 0);
     TEST_ERROR;
+    users = shmat(SH_USERS_ID, NULL, 0);
+    TEST_ERROR;
     srand(time(NULL));
-    index_rnode= rand() % SO_NODES_NUM;
-    printf("index random node: %d\n", index_rnode);
-    if(curr_balance<=2){
-            index_ruser= rand() % SO_NODES_NUM;
+    exit(EXIT_FAILURE);
+    if(curr_balance>=2){
+            index_ruser= rand() % SO_USERS_NUM;
+            index_rnode= rand() % SO_NODES_NUM;
+            printf("INDEX NODE: %d", nodes[index_rnode].id_mq);
+            
+            r_number=(rand() % curr_balance-2)+2;
+            calculate_reward=r_number/100*SO_REWARD;
+            clock_gettime(CLOCK_REALTIME, &timestamp);
+            msg.trans->timestamp= timestamp.tv_nsec;
+            msg.trans->sender = getpid();
+            msg.trans->receiver = users[index_ruser].pid;
+            msg.trans->reward = calculate_reward; /*minimo di 1 ??*/
+            msg.trans->amount = r_number-calculate_reward;
+            msg.mtype=nodes[index_rnode].pid;
+            msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(msg),0);
+            TEST_ERROR;
 
     }
     printf("main user\n");
