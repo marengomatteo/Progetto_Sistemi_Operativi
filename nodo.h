@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stddef.h>
+#include <time.h>
 
 
 void transaction_print (transaction d){
@@ -9,7 +10,7 @@ void transaction_print (transaction d){
 
 }
 
-transaction* new_transaction(int timestamp, int sender, int receiver, int amount, int reward){
+transaction* new_transaction(long timestamp, int sender, int receiver, int amount, int reward){
     transaction *d = malloc(sizeof(transaction));
     d->timestamp = timestamp;
     d->sender = sender;
