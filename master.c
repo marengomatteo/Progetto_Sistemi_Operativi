@@ -72,20 +72,36 @@ masterbook *master_book;
 user_struct *user;
 
 
-void alarmHandler(int sig)
-{
-    printf("Allarme ricevuto e trattato\n");
-    alarm(1);
+void sig_handler(int signum){
+   switch(signum){
+       case SIGALRM:
+         semctl(sem_nodes_users_id,0, IPC_RMID);
+         shmctl(shared_nodes_id,0, IPC_RMID);
+         shmctl(shared_masterbook_id,0, IPC_RMID);
+         shmctl(shared_users_id,0, IPC_RMID);
+         kill(getpid(),15);
+       break;
+       default: 
+       break;
+   }
+   
 }
 
-int main(int argc, char **argv, char **envp)
-{
+int main(int argc, char **argv, char **envp){
+
     char id_argument_sm_nodes[3 * sizeof(int) + 1]; /*id memoria condivisa nodi*/
     char id_argument_sm_masterbook[3 * sizeof(int) + 1]; /*id memoria condivisa master book*/
     char id_argument_sm_users[3 * sizeof(int) + 1]; /*id memoria condivisa user*/
     char id_argument_sem_id[3 * sizeof(int) + 1]; /*id semaforo user e nodi*/
 
-    /* Create a shared memory area for nodes struct */
+    if (signal(SIGALRM, sig_handler)==SIG_ERR) {
+        printf("\nErrore della disposizione dell'handler\n");
+        exit(EXIT_FAILURE);
+    }
+
+    alarm(SO_SIM_SEC);
+
+  /* Create a shared memory area for nodes struct */
     shared_nodes_id = shmget(IPC_PRIVATE, SO_NODES_NUM * sizeof(node_struct), 0600);
     TEST_ERROR;
     /* Attach the shared memory to a pointer */
@@ -130,19 +146,13 @@ int main(int argc, char **argv, char **envp)
     genera_nodi(envp);
     genera_utenti(envp);
 
-    /*Rimuovo semaforo
-    semctl(sem_nodes_users_id,0, IPC_RMID);
-    shmctl(shared_nodes_id,0, IPC_RMID);
-    shmctl(shared_masterbook_id,0, IPC_RMID);
-    shmctl(shared_users_id,0, IPC_RMID);
+    while(1) {
+        printf("mancano un secondo in meno\n");
+        sleep(1);
+    };
+   
+    return 0;  
 
-     if (signal(SIGALRM, alarmHandler) == SIG_ERR)
-    {
-        printf("\nErrore della disposizione dell'handler\n");
-        exit(EXIT_FAILURE);
-     }
-     alarm(2);*/
-    return 0;
 }
 
 void genera_nodi(char **envp)
@@ -179,7 +189,6 @@ void genera_nodi(char **envp)
                 TEST_ERROR;
                 exit(EXIT_FAILURE);
             default:
-                
                 sops.sem_num = 0;
                 sops.sem_op = -1;
                 sops.sem_flg = 0;
