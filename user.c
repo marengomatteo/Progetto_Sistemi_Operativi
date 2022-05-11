@@ -67,6 +67,8 @@ int main(int argc, char *argv[])
     msg.trans= malloc(sizeof(transaction));
     curr_balance=SO_BUDGET_INIT;
 
+    printf("nodes id: %d\n", SH_NODES_ID);
+    printf("users id: %d\n", SH_USERS_ID);
     /*Mi aggancio alla memoria condivisa dei nodi*/
     nodes = shmat(SH_NODES_ID, NULL, 0);
     TEST_ERROR;
@@ -74,11 +76,8 @@ int main(int argc, char *argv[])
     /*Mi aggancio alla memoria condivisa degli utenti*/
     users = shmat(SH_USERS_ID, NULL, 0);
     TEST_ERROR;
-
     
-    srand(time(NULL));
-    
-    
+    srand(getpid());
     if(curr_balance>=2){
             index_ruser= rand() % SO_USERS_NUM;
             index_rnode= rand() % SO_NODES_NUM;
@@ -90,7 +89,7 @@ int main(int argc, char *argv[])
             msg.trans->timestamp= timestamp.tv_nsec;
             msg.trans->sender = getpid();
             msg.trans->receiver = users[index_ruser].pid;
-            msg.trans->reward = calculate_reward; /*minimo di 1 ??*/
+            msg.trans->reward = calculate_reward;
             msg.trans->amount = r_number-calculate_reward;
             msg.mtype=nodes[index_rnode].pid;
             msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(msg),0);
