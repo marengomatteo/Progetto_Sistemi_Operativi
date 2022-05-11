@@ -174,6 +174,8 @@ void genera_nodi(char **envp)
                 /*Inserisco dentro la memoria condivisa dei nodi il pid del nodo e l'id della coda di messaggi*/
                 nodes[i].pid = getpid();
                 msgq_id = msgget(getpid(), 0600 | IPC_CREAT);
+                    printf("nodo scrive\n");
+
                 if(msgq_id == -1){
                     perror("errore sulla coda di messaggi");
                     exit(EXIT_FAILURE);
@@ -215,7 +217,7 @@ void genera_utenti(char** envp)
 
                 /*Inserisco dentro la memoria condivisa il pid dello user*/
                 user[i].pid=getpid();
-
+ printf("user scrive\n");
                 if (execve(USER_NAME, user_arguments, envp) == -1){
                     perror("Could not execve");
                     exit(EXIT_FAILURE);

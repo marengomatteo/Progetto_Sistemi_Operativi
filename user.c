@@ -11,7 +11,6 @@
 #include <sys/sem.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <sys/msg.h>
 #include <time.h>
 
 
@@ -63,7 +62,6 @@ int main(int argc, char *argv[])
         perror("semaforo rotto");
         exit(EXIT_FAILURE);
     }
-
     msg.trans= malloc(sizeof(transaction));
     curr_balance=SO_BUDGET_INIT;
 
@@ -82,7 +80,7 @@ int main(int argc, char *argv[])
             index_ruser= rand() % SO_USERS_NUM;
             index_rnode= rand() % SO_NODES_NUM;
             printf("INDEX NODE: %d", nodes[index_rnode].id_mq);
-            
+    
             r_number=(rand() % curr_balance-2)+2;
             calculate_reward=r_number/100*SO_REWARD;
             clock_gettime(CLOCK_REALTIME, &timestamp);
@@ -93,7 +91,9 @@ int main(int argc, char *argv[])
             msg.trans->amount = r_number-calculate_reward;
             msg.mtype=nodes[index_rnode].pid;
             msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(msg),0);
-            TEST_ERROR;
+            printf("\nid coda %d",nodes[index_rnode].id_mq);
+              TEST_ERROR;
+         
 
     }
     printf("main user\n");

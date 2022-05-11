@@ -60,6 +60,8 @@ int main(int argc, char *argv[])
     /* Mi attacco alle memorie condivise */
     nodes = shmat(SH_NODES_ID, NULL, 0);
     TEST_ERROR;
+    printf("index 0: %d",nodes[0].id_mq);
+    printf("index 1: %d",nodes[1].id_mq);
     /*printf("\n mi sono connesso alla memoria condivisa con id: %d\n", SH_NODES_ID);
     stampaStatoMemoria(SH_NODES_ID);*/
 
