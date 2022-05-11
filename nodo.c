@@ -51,7 +51,6 @@ list transaction_pool;
 
 int main(int argc, char *argv[])
 {    
-    
     /* semop in attesa che tutti i nodi e gli utenti vengano creati*/
     sops.sem_num = 0;
     sops.sem_op = 0;
@@ -76,7 +75,7 @@ int main(int argc, char *argv[])
 
     /*Aggiungo transazione di reward*/
     l_add_transaction(new_transaction(timestamp.tv_nsec,REWARD_SENDER,getpid(), block_reward,0),&transaction_pool);
-    msgctl(nodes[NODE_ID].id_mq,0,IPC_RMID);
-    TEST_ERROR;
+    /*msgctl(nodes[NODE_ID].id_mq,0,IPC_RMID);
+    TEST_ERROR;*/
     exit(EXIT_SUCCESS); 
 }

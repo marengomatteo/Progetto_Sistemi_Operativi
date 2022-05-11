@@ -124,6 +124,8 @@ int main(int argc, char **argv, char **envp)
     user_arguments[2] = id_argument_sm_nodes;
     user_arguments[3] = id_argument_sm_masterbook;
     user_arguments[5] = id_argument_sem_id;
+    printf("memoria condivisa users: %d\n", shared_users_id);
+    printf("memoria condivisa nodes: %d\n", shared_nodes_id);
 
     genera_nodi(envp);
     genera_utenti(envp);
