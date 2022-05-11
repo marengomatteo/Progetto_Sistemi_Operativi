@@ -32,7 +32,7 @@ user.o: user.c user.h
 	${CC} -c -std=c89 -pedantic user.c
 
 clean:
-	rm -f *.o
+	rm -f *.o master nodo user
 
 run: 
 	./master
