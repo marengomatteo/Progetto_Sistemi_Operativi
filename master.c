@@ -65,7 +65,7 @@ int shared_masterbook_id; /* id mlibro mastro*/
 int shared_users_id; /* id memoria condivisa degli user*/
 
 char *node_arguments[5] = {NODE_NAME};
-char *user_arguments[5] = {USER_NAME};
+char *user_arguments[6] = {USER_NAME};
 
 node_struct *nodes;
 masterbook *master_book;
@@ -83,6 +83,7 @@ int main(int argc, char **argv, char **envp)
     char id_argument_sm_nodes[3 * sizeof(int) + 1]; /*id memoria condivisa nodi*/
     char id_argument_sm_masterbook[3 * sizeof(int) + 1]; /*id memoria condivisa master book*/
     char id_argument_sm_users[3 * sizeof(int) + 1]; /*id memoria condivisa user*/
+    char id_argument_sem_id[3 * sizeof(int) + 1]; /*id semaforo user e nodi*/
 
     /* Create a shared memory area for nodes struct */
     shared_nodes_id = shmget(IPC_PRIVATE, SO_NODES_NUM * sizeof(node_struct), 0600);
@@ -103,19 +104,26 @@ int main(int argc, char **argv, char **envp)
     user = (user_struct*)shmat(shared_masterbook_id, NULL,0);
     TEST_ERROR;
 
+    /* Creazione del semaforo per inizializzare user e nodi*/ 
+    sem_nodes_users_id = semget(IPC_PRIVATE, 1, 0600);
+    TEST_ERROR;
+    sem_init();
+    printf("id semaforo: %d\n", sem_nodes_users_id);
+
     /*Converte da int a char gli id delle memorie condivise*/
     sprintf(id_argument_sm_nodes, "%d", shared_nodes_id);
     sprintf(id_argument_sm_masterbook,"%d",shared_masterbook_id);
     sprintf(id_argument_sm_users,"%d",shared_users_id);
+    sprintf(id_argument_sem_id, "%d", sem_nodes_users_id);
+    /* Argomenti per nodo*/
     node_arguments[1] = id_argument_sm_nodes;
+    node_arguments[2] = id_argument_sem_id;
     node_arguments[4] = id_argument_sm_masterbook;
+    /* Argomenti per user*/
     user_arguments[1] = id_argument_sm_users;
     user_arguments[2] = id_argument_sm_nodes;
     user_arguments[3] = id_argument_sm_masterbook;
-
-    sem_nodes_users_id = semget(IPC_PRIVATE, 1, 0600);
-    TEST_ERROR;
-    sem_init();
+    user_arguments[5] = id_argument_sem_id;
 
     genera_nodi(envp);
     genera_utenti(envp);
@@ -141,9 +149,6 @@ void genera_nodi(char **envp)
     int i;
     int msgq_id;
     printf("\nGenerazione nodi\n");
-
-    sprintf(sem_n_id, "%d", sem_nodes_users_id);
-    node_arguments[2] = sem_n_id;
 
     for (i = 0; i < SO_NODES_NUM; i++)
     {
@@ -186,11 +191,7 @@ void genera_nodi(char **envp)
 void genera_utenti(char** envp)
 {
     int i;
-    char* user_id;
-   
-    sprintf(sem_n_id, "%d", sem_nodes_users_id);
-    user_arguments[4] = sem_n_id;
-
+    char user_id[3*sizeof(int)+1];
 
     for (i = 0; i < SO_USERS_NUM; i++)
     {
@@ -199,7 +200,7 @@ void genera_utenti(char** envp)
             case 0:
                 printf("\nCreato user %d\n", getpid());
                 sprintf(user_id, "%d", i);
-                user_arguments[4]=user_id;
+                user_arguments[4] = user_id;
 
                 /*Inserisco dentro la memoria condivisa il pid dello user*/
                 user[i].pid=getpid();
