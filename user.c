@@ -56,18 +56,13 @@ struct msgbuf {
 
 int main(int argc, char *argv[])
 {
-    printf("semaforo user: %d\n", SEM_ID);
+    /* semop in attesa che tutti i nodi e gli utenti vengano creati*/
     sops.sem_num = 0;
     sops.sem_op = 0;
-    if(semop(SEM_ID, &sops, 1) == -1)
-        printf("dio cane\n");
-
-    printf("sono in user\n");
-   
-    printf("sono prima del semaforo\n");
-    /* semop in attesa che tutti i nodi e gli utenti vengano creati*/
-
-    printf("sono dopo il semaforo\n");
+    if(semop(SEM_ID, &sops, 1) == -1){
+        perror("semaforo rotto");
+        exit(EXIT_FAILURE);
+    }
 
     msg.trans= malloc(sizeof(transaction));
     curr_balance=SO_BUDGET_INIT;
