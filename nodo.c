@@ -58,16 +58,9 @@ int main(int argc, char *argv[])
     /*printf("\n mi sono connesso alla memoria condivisa con id: %d\n", SH_NODES_ID);
     stampaStatoMemoria(SH_NODES_ID);*/
 
-    /* Devo crearmi la coda di messaggi */
-    nodes[NODE_ID].id_mq = msgget(getpid(), 0600 | IPC_CREAT);
-    TEST_ERROR;
-    /*printf("ho creato la coda di messaggi id: %d e l'ho inserita dentro la memoria condivisa con id: %d\n", nodes[NODE_ID].id_mq, SH_NODES_ID);
-    stampaStatoMemoria(SH_NODES_ID);*/
-
-    /* semop con id che punta al semaforo per poter notificare al padre 
-    che il nodo ha creato la sua coda di messaggi */
+    /* semop in attesa che tutti i nodi e gli utenti vengano creati*/
     sops.sem_num = 0;
-    sops.sem_op = 1;
+    sops.sem_op = 0;
     semop(SH_SEM_ID, &sops, 1);
 
     clock_gettime(CLOCK_REALTIME, &timestamp);

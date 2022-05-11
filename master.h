@@ -14,7 +14,8 @@ typedef struct user_struct{
     int pid;
 } user_struct;
 
+void sem_init();
 void genera_nodi(char ** envp);
-void genera_utenti();
+void genera_utenti(char ** envp);
 static void set_shared_memory();
 static void shm_print_stats(int fd, int m_id);

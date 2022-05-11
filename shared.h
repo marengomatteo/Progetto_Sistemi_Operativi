@@ -28,7 +28,7 @@ int stampaStatoMemoria(int shid) {
   printf("Ultima shmat: %s\n",ctime(&buf.shm_atime));
   printf("Ultima shmdt: %s\n",ctime(&buf.shm_dtime));
   printf("Ultimo processo shmat/shmdt: %d\n",buf.shm_lpid);
-  printf("Processi connessi: %ld\n",buf.shm_nattch);
+  printf("Processi connessi: %hu\n",buf.shm_nattch);
   printf("\n");
   return 0;
   }

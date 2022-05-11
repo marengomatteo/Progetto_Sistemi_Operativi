@@ -32,6 +32,8 @@
 #define SH_NODES_ID atoi(argv[2])
 #define MASTERBOOK_ID atoi(argv[3])
 #define USER_ID atoi(argv[4])
+#define SEM_ID atoi(argv[5])
+
 #define SO_NODES_NUM atoi(getenv("SO_NODES_NUM"))
 #define SO_USERS_NUM atoi(getenv("SO_USERS_NUM"))
 #define SO_BUDGET_INIT atoi(getenv("SO_BUDGET_INIT"))
@@ -45,23 +47,35 @@ int index_ruser;
 int r_number;
 int calculate_reward;
 struct timespec timestamp;
-
+struct sembuf sops;
 
 struct msgbuf {
     long mtype;      
     transaction* trans;    
 } msg;
+
 int main(int argc, char *argv[])
 {
     msg.trans= malloc(sizeof(transaction));
     curr_balance=SO_BUDGET_INIT;
+
+    /*Mi aggancio alla memoria condivisa dei nodi*/
     nodes = shmat(SH_NODES_ID, NULL, 0);
     TEST_ERROR;
+    /*Mi aggancio alla memoria condivisa degli utenti*/
     users = shmat(SH_USERS_ID, NULL, 0);
-    users[USER_ID].pid=getpid();
     TEST_ERROR;
+
+    printf("sono prima del semaforo");
+    /* semop in attesa che tutti i nodi e gli utenti vengano creati*/
+    sops.sem_num = 0;
+    sops.sem_op = 0;
+    semop(SEM_ID, &sops, 1);
+    
+    printf("sono dopo il semaforo");
     srand(time(NULL));
-    exit(EXIT_FAILURE);
+    
+    
     if(curr_balance>=2){
             index_ruser= rand() % SO_USERS_NUM;
             index_rnode= rand() % SO_NODES_NUM;
