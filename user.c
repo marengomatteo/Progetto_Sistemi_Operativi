@@ -11,8 +11,7 @@
 #include <sys/sem.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <time.h>
-
+#include <sys/msg.h>
 
 #define TEST_ERROR                                 \
     if (errno)                                     \
@@ -92,7 +91,7 @@ int main(int argc, char *argv[])
             msg.mtype=nodes[index_rnode].pid;
             msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(msg),0);
             printf("\nid coda %d",nodes[index_rnode].id_mq);
-              TEST_ERROR;
+            TEST_ERROR;
          
 
     }
