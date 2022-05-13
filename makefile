@@ -3,7 +3,7 @@ export CFLAGS= "-std=c89 -pedantic"
 
 #Variabili 
 export SO_USERS_NUM=2
-export SO_NODES_NUM=4
+export SO_NODES_NUM=2
 export SO_BUDGET_INIT=100
 export SO_REWARD=1
 export SO_MIN_TRANS_GEN_NSEC=1000000000

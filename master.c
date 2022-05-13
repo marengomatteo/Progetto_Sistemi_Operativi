@@ -30,8 +30,8 @@
         errno = 0;                                 \
     }
 
-#define SO_USERS_NUM 2 /* atoi(getenv("SO_USERS_NUM"))*/
-#define SO_NODES_NUM 2 /* atoi(getenv("SO_NODES_NUM"))*/
+#define SO_USERS_NUM atoi(getenv("SO_USERS_NUM"))
+#define SO_NODES_NUM atoi(getenv("SO_NODES_NUM"))
 #define SO_REWARD atoi(getenv("SO_REWARD"))
 #define SO_MIN_TRANS_GEN_NSEC atoi(getenv("SO_MIN_TRANS_GEN_NSEC"))
 #define SO_MAX_TRANS_GEN_NSEC atoi(getenv("SO_MAX_TRANS_GEN_NSEC"))
@@ -147,7 +147,7 @@ int main(int argc, char **argv, char **envp){
     genera_utenti(envp);
 
     while(1) {
-        printf("mancano un secondo in meno\n");
+        printf("manca un secondo in meno\n");
         sleep(1);
     };
    
@@ -174,8 +174,6 @@ void genera_nodi(char **envp)
                 /*Inserisco dentro la memoria condivisa dei nodi il pid del nodo e l'id della coda di messaggi*/
                 nodes[i].pid = getpid();
                 msgq_id = msgget(getpid(), 0600 | IPC_CREAT);
-                    printf("nodo scrive\n");
-
                 if(msgq_id == -1){
                     perror("errore sulla coda di messaggi");
                     exit(EXIT_FAILURE);
@@ -217,7 +215,7 @@ void genera_utenti(char** envp)
 
                 /*Inserisco dentro la memoria condivisa il pid dello user*/
                 user[i].pid=getpid();
- printf("user scrive\n");
+ 
                 if (execve(USER_NAME, user_arguments, envp) == -1){
                     perror("Could not execve");
                     exit(EXIT_FAILURE);

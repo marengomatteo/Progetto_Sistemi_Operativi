@@ -74,10 +74,13 @@ int main(int argc, char *argv[])
     users = shmat(SH_USERS_ID, NULL, 0);
     TEST_ERROR;
     
+    printf("nodes[0].id_mq %d\n", nodes[0].id_mq);
+
     srand(getpid());
     if(curr_balance>=2){
             index_ruser= rand() % SO_USERS_NUM;
             index_rnode= rand() % SO_NODES_NUM;
+            printf("index_rnode: %d\n", index_rnode);
             printf("INDEX NODE: %d", nodes[index_rnode].id_mq);
     
             r_number=(rand() % curr_balance-2)+2;
@@ -90,10 +93,10 @@ int main(int argc, char *argv[])
             msg.trans->amount = r_number-calculate_reward;
             msg.mtype=nodes[index_rnode].pid;
             msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(msg),0);
-            printf("\nid coda %d",nodes[index_rnode].id_mq);
+            printf("\nid coda %d\n",nodes[index_rnode].id_mq);
             TEST_ERROR;
          
 
     }
-    printf("main user\n");
+    printf("\nmain user\n");
 }
