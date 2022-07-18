@@ -60,8 +60,6 @@ int main(int argc, char *argv[])
     /* Mi attacco alle memorie condivise */
     nodes = shmat(SH_NODES_ID, NULL, 0);
     TEST_ERROR;
-    printf("index 0: %d\n",nodes[0].id_mq);
-    printf("index 1: %d\n",nodes[1].id_mq);
     /*printf("\n mi sono connesso alla memoria condivisa con id: %d\n", SH_NODES_ID);
     stampaStatoMemoria(SH_NODES_ID);*/
 
@@ -77,5 +75,5 @@ int main(int argc, char *argv[])
     l_add_transaction(new_transaction(timestamp.tv_nsec,REWARD_SENDER,getpid(), block_reward,0),&transaction_pool);
     /*msgctl(nodes[NODE_ID].id_mq,0,IPC_RMID);
     TEST_ERROR;*/
-    exit(EXIT_SUCCESS); 
+    exit(EXIT_SUCCESS);
 }

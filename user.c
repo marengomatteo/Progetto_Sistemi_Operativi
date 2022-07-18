@@ -36,6 +36,8 @@
 #define SO_USERS_NUM atoi(getenv("SO_USERS_NUM"))
 #define SO_BUDGET_INIT atoi(getenv("SO_BUDGET_INIT"))
 #define SO_REWARD atoi(getenv("SO_REWARD"))
+#define SO_MIN_TRANS_GEN_NSEC atoi(getenv("SO_MIN_TRANS_GEN_NSEC"))
+#define SO_MAX_TRANS_GEN_NSEC atoi(getenv("SO_MAX_TRANS_GEN_NSEC"))
 
 int curr_balance;   
 node_struct* nodes;
@@ -44,10 +46,11 @@ int index_rnode;
 int index_ruser;
 int r_number;
 int calculate_reward;
+int r_time;
 struct timespec timestamp;
 struct sembuf sops;
 
-struct msgbuf {
+struct msgbuf_trans {
     long mtype;      
     transaction* trans;    
 } msg;
@@ -73,30 +76,31 @@ int main(int argc, char *argv[])
     /*Mi aggancio alla memoria condivisa degli utenti*/
     users = shmat(SH_USERS_ID, NULL, 0);
     TEST_ERROR;
-    
-    printf("nodes[0].id_mq %d\n", nodes[0].id_mq);
 
     srand(getpid());
     if(curr_balance>=2){
-            index_ruser= rand() % SO_USERS_NUM;
-            index_rnode= rand() % SO_NODES_NUM;
-            printf("index_rnode: %d\n", index_rnode);
-            printf("INDEX NODE: %d", nodes[index_rnode].id_mq);
+        
+        index_ruser= rand() % SO_USERS_NUM;
+        index_rnode= rand() % SO_NODES_NUM;
+        printf("index_rnode: %d\n", index_rnode);
+        printf("INDEX NODE: %d", nodes[index_rnode].id_mq);
     
-            r_number=(rand() % curr_balance-2)+2;
-            calculate_reward=r_number/100*SO_REWARD;
-            clock_gettime(CLOCK_REALTIME, &timestamp);
-            msg.trans->timestamp= timestamp.tv_nsec;
-            msg.trans->sender = getpid();
-            msg.trans->receiver = users[index_ruser].pid;
-            msg.trans->reward = calculate_reward;
-            msg.trans->amount = r_number-calculate_reward;
-            msg.mtype=nodes[index_rnode].pid;
-            msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(msg),0);
-            printf("\nid coda %d\n",nodes[index_rnode].id_mq);
-            TEST_ERROR;
-         
-
+        r_number=(rand() % curr_balance-2)+2;
+        calculate_reward=r_number/100*SO_REWARD;
+        clock_gettime(CLOCK_REALTIME, &timestamp);
+        msg.trans->timestamp= timestamp.tv_nsec;
+        msg.trans->sender = getpid();
+        msg.trans->receiver = users[index_ruser].pid;
+        msg.trans->reward = calculate_reward;
+        msg.trans->amount = r_number-calculate_reward;
+        msg.mtype=nodes[index_rnode].pid;
+        msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(msg),0);
+        printf("\nid coda %d\n",nodes[index_rnode].id_mq);
+        TEST_ERROR;
     }
-    printf("\nmain user\n");
+
+    r_time = (rand()%(SO_MAX_TRANS_GEN_NSEC+1-SO_MIN_TRANS_GEN_NSEC))+SO_MIN_TRANS_GEN_NSEC;
+    sleep(r_time);
+
+    exit(EXIT_SUCCESS);
 }
