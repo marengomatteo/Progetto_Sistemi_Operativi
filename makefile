@@ -16,7 +16,7 @@ export SO_SIM_SEC=10
 export SO_FRIENDS_NUM=3
 export SO_HOPS=10 
 
-master: master.o nodo user
+master: master.o nodo user shared.h
 	${CC} -o master master.o
 
 user: user.o
