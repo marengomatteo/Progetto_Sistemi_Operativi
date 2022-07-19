@@ -54,3 +54,7 @@ dkms.conf
 nodo
 master
 user
+
+nodo.o
+master.o
+user.o
