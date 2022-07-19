@@ -112,7 +112,7 @@ int main(int argc, char **argv, char **envp){
     /* Creazione masterbook */
     shared_masterbook_id = shmget(IPC_PRIVATE, SO_REGISTRY_SIZE * SO_BLOCK_SIZE * sizeof(block), 0600);
     TEST_ERROR;
-    master_book =(block*)shmat(shared_masterbook_id, NULL, 0);
+    master_book =(masterbook*)shmat(shared_masterbook_id, NULL, 0);
     TEST_ERROR;
 
     /* Creazione memoria condivisa per user*/
@@ -152,9 +152,7 @@ int main(int argc, char **argv, char **envp){
         printf("manca un secondo in meno\n");
         nanosleep(&timestamp, NULL);
     };
-   
     return 0;  
-
 }
 
 void genera_nodi(char **envp)
