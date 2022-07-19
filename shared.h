@@ -33,3 +33,16 @@ int stampaStatoMemoria(int shid) {
   return 0;
   }
 }
+
+void transaction_print (transaction* d){
+  printf("transaction:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n}\n", d->timestamp, d->sender, d->receiver, d->amount, d->reward);
+}
+
+/*void l_print(list l){
+	printf("transaction:\n");
+	for ( ; l!=NULL ; l=l->next){
+  	printf("{\n");
+    transaction_print(l->transaction);
+	  printf("\b\b},\n");
+  }
+}*/

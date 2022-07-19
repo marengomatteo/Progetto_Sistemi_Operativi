@@ -5,11 +5,6 @@
 #include <time.h>
 
 
-void transaction_print (transaction d){
-    printf("\ttimestamp: %d,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
-
-}
-
 transaction* new_transaction(long timestamp, int sender, int receiver, int amount, int reward){
     transaction *d = malloc(sizeof(transaction));
     d->timestamp = timestamp;
@@ -46,12 +41,5 @@ int l_length(list l){
   return length;
 }
 
-void l_print(list l){
-	printf("transaction:\n");
-	for ( ; l!=NULL ; l=l->next){
-  	printf("{\n");
-    transaction_print(l->transaction);
-	  printf("\b\b},\n");
-  }
-}
+
 

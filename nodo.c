@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     stampaStatoMemoria(SH_NODES_ID);*/
 
     msgrcv(nodes[NODE_ID].id_mq, &msg, sizeof(msg), 0, 0);
-    printf("trans timestamp %d\n", msg.trans->timestamp);
+    printf("trans timestamp %ld\n", msg.trans->timestamp);
     clock_gettime(CLOCK_REALTIME, &timestamp);
     TEST_ERROR;
     /*Prelevo dalla coda SO_TP_SIZE-1 transazioni */

@@ -95,6 +95,9 @@ int main(int argc, char *argv[])
         msg.trans->amount = r_number-calculate_reward;
         msg.mtype=nodes[index_rnode].pid;
         retry=SO_RETRY;
+        
+        transaction_print(msg.trans);
+
         while(retry>=0 && msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(msg),IPC_NOWAIT)<0){
             if(retry==0){
                 /* notifica a master */
