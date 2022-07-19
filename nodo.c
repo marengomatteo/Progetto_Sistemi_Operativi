@@ -35,16 +35,23 @@
 #define NODE_ID atoi(argv[3])
 #define MASTERBOOK_ID atoi(argv[4])
 #define REWARD_SENDER -1 
+#define SO_MIN_TRANS_GEN_NSEC atoi(getenv("SO_MIN_TRANS_GEN_NSEC"))
+#define SO_MAX_TRANS_GEN_NSEC atoi(getenv("SO_MAX_TRANS_GEN_NSEC"))
 
 /*Semaforo per segnalare che i nodi sono pronti*/
 #define ID_READY 0;
 
 int sem_nodes_id;
 int block_reward;
+int r_time;
 struct timespec timestamp;
 node_struct *nodes;
 
 struct sembuf sops;
+struct msgbuf_trans {
+    long mtype;      
+    transaction* trans;    
+} msg;
 
 /*Create transaction pool list*/
 list transaction_pool;
@@ -63,6 +70,8 @@ int main(int argc, char *argv[])
     /*printf("\n mi sono connesso alla memoria condivisa con id: %d\n", SH_NODES_ID);
     stampaStatoMemoria(SH_NODES_ID);*/
 
+    msgrcv(nodes[NODE_ID].id_mq, &msg, sizeof(msg), 0, 0);
+    printf("trans timestamp %d\n", msg.trans->timestamp);
     clock_gettime(CLOCK_REALTIME, &timestamp);
     TEST_ERROR;
     /*Prelevo dalla coda SO_TP_SIZE-1 transazioni */
@@ -75,5 +84,8 @@ int main(int argc, char *argv[])
     l_add_transaction(new_transaction(timestamp.tv_nsec,REWARD_SENDER,getpid(), block_reward,0),&transaction_pool);
     /*msgctl(nodes[NODE_ID].id_mq,0,IPC_RMID);
     TEST_ERROR;*/
+    r_time = (rand()%(SO_MAX_TRANS_GEN_NSEC+1-SO_MIN_TRANS_GEN_NSEC))+SO_MIN_TRANS_GEN_NSEC;
+    timestamp.tv_nsec=r_time;
+    nanosleep(&timestamp, NULL);
     exit(EXIT_SUCCESS);
 }

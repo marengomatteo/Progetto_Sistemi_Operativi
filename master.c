@@ -67,6 +67,7 @@ int shared_users_id; /* id memoria condivisa degli user*/
 char *node_arguments[5] = {NODE_NAME};
 char *user_arguments[6] = {USER_NAME};
 
+struct timespec timestamp;
 node_struct *nodes;
 masterbook *master_book;
 user_struct *user;
@@ -75,16 +76,11 @@ user_struct *user;
 void sig_handler(int signum){
    switch(signum){
        case SIGALRM:
-         semctl(sem_nodes_users_id,0, IPC_RMID);
-         shmctl(shared_nodes_id,0, IPC_RMID);
-         shmctl(shared_masterbook_id,0, IPC_RMID);
-         shmctl(shared_users_id,0, IPC_RMID);
-         kill(getpid(),15);
+         remove_IPC();
        break;
        default: 
        break;
    }
-   
 }
 
 int main(int argc, char **argv, char **envp){
@@ -97,6 +93,11 @@ int main(int argc, char **argv, char **envp){
     if (signal(SIGALRM, sig_handler)==SIG_ERR) {
         printf("\nErrore della disposizione dell'handler\n");
         exit(EXIT_FAILURE);
+    }
+    if(SO_TP_SIZE<=SO_BLOCK_SIZE) {
+        remove_IPC();
+        printf("Parametri errati\n");
+        return 0;  
     }
 
     alarm(SO_SIM_SEC);
@@ -111,13 +112,13 @@ int main(int argc, char **argv, char **envp){
     /* Creazione masterbook */
     shared_masterbook_id = shmget(IPC_PRIVATE, SO_REGISTRY_SIZE * SO_BLOCK_SIZE * sizeof(block), 0600);
     TEST_ERROR;
-    master_book =(masterbook*)shmat(shared_masterbook_id, NULL, 0);
+    master_book =(block*)shmat(shared_masterbook_id, NULL, 0);
     TEST_ERROR;
 
     /* Creazione memoria condivisa per user*/
     shared_users_id = shmget(IPC_PRIVATE, SO_USERS_NUM*sizeof(int),0600);
     TEST_ERROR;
-    user = (user_struct*)shmat(shared_masterbook_id, NULL,0);
+    user = (user_struct*)shmat(shared_users_id, NULL,0);
     TEST_ERROR;
 
     /* Creazione del semaforo per inizializzare user e nodi*/ 
@@ -146,9 +147,10 @@ int main(int argc, char **argv, char **envp){
     genera_nodi(envp);
     genera_utenti(envp);
 
+    timestamp.tv_sec=1;
     while(1) {
         printf("manca un secondo in meno\n");
-         sleep(1);
+        nanosleep(&timestamp, NULL);
     };
    
     return 0;  
@@ -236,4 +238,10 @@ void genera_utenti(char** envp)
 
 void sem_init(){
     semctl(sem_nodes_users_id, 0, SETVAL, SO_NODES_NUM+SO_USERS_NUM);
+}
+void remove_IPC(){
+    semctl(sem_nodes_users_id,0, IPC_RMID);
+    shmctl(shared_nodes_id,0, IPC_RMID);
+    shmctl(shared_masterbook_id,0, IPC_RMID);
+    shmctl(shared_users_id,0, IPC_RMID);
 }

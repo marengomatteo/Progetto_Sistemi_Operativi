@@ -38,6 +38,7 @@
 #define SO_REWARD atoi(getenv("SO_REWARD"))
 #define SO_MIN_TRANS_GEN_NSEC atoi(getenv("SO_MIN_TRANS_GEN_NSEC"))
 #define SO_MAX_TRANS_GEN_NSEC atoi(getenv("SO_MAX_TRANS_GEN_NSEC"))
+#define SO_RETRY atoi(getenv("SO_RETRY"))
 
 int curr_balance;   
 node_struct* nodes;
@@ -45,6 +46,7 @@ user_struct* users;
 int index_rnode;
 int index_ruser;
 int r_number;
+int retry;
 int calculate_reward;
 int r_time;
 struct timespec timestamp;
@@ -77,14 +79,12 @@ int main(int argc, char *argv[])
     users = shmat(SH_USERS_ID, NULL, 0);
     TEST_ERROR;
 
+    
     srand(getpid());
     if(curr_balance>=2){
         
         index_ruser= rand() % SO_USERS_NUM;
         index_rnode= rand() % SO_NODES_NUM;
-        printf("index_rnode: %d\n", index_rnode);
-        printf("INDEX NODE: %d", nodes[index_rnode].id_mq);
-    
         r_number=(rand() % curr_balance-2)+2;
         calculate_reward=r_number/100*SO_REWARD;
         clock_gettime(CLOCK_REALTIME, &timestamp);
@@ -94,13 +94,21 @@ int main(int argc, char *argv[])
         msg.trans->reward = calculate_reward;
         msg.trans->amount = r_number-calculate_reward;
         msg.mtype=nodes[index_rnode].pid;
-        msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(msg),0);
-        printf("\nid coda %d\n",nodes[index_rnode].id_mq);
-        TEST_ERROR;
+        retry=SO_RETRY;
+        while(retry>=0 && msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(msg),IPC_NOWAIT)<0){
+            if(retry==0){
+                /* notifica a master */
+                exit(EXIT_FAILURE);
+            }
+            retry--;
+        }
+/*         printf("\nid coda %d\n",nodes[index_rnode].id_mq);
+ */        TEST_ERROR;  
     }
-
     r_time = (rand()%(SO_MAX_TRANS_GEN_NSEC+1-SO_MIN_TRANS_GEN_NSEC))+SO_MIN_TRANS_GEN_NSEC;
-    sleep(r_time);
+    timestamp.tv_nsec=r_time;
+    nanosleep(&timestamp, NULL);
 
+  
     exit(EXIT_SUCCESS);
 }

@@ -15,6 +15,7 @@ typedef struct user_struct{
 } user_struct;
 
 void sem_init();
+void remove_IPC();
 void genera_nodi(char ** envp);
 void genera_utenti(char ** envp);
 static void set_shared_memory();
