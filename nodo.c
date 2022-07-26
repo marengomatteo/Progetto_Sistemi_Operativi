@@ -30,6 +30,7 @@
 
 #define SH_PARAM_ID 
 #define SO_TP_SIZE atoi(getenv("SO_TP_SIZE")) 
+#define SO_BLOCK_SIZE atoi(getenv("SO_BLOCK_SIZE")) 
 #define SH_NODES_ID atoi(argv[1])
 #define SH_SEM_ID atoi(argv[2])
 #define NODE_ID atoi(argv[3])
@@ -55,6 +56,7 @@ struct msgbuf_trans {
 
 /*Create transaction pool list*/
 list transaction_pool;
+block transaction_block;
 
 int main(int argc, char *argv[])
 {    
@@ -70,22 +72,37 @@ int main(int argc, char *argv[])
     /*printf("\n mi sono connesso alla memoria condivisa con id: %d\n", SH_NODES_ID);
     stampaStatoMemoria(SH_NODES_ID);*/
 
-    msgrcv(nodes[NODE_ID].id_mq, &msg, sizeof(msg), 0, 0);
-    printf("trans timestamp %ld\n", msg.trans->timestamp);
     clock_gettime(CLOCK_REALTIME, &timestamp);
     TEST_ERROR;
+    while (1)
+    {
+    
     /*Prelevo dalla coda SO_TP_SIZE-1 transazioni */
-    if(SO_TP_SIZE<l_length(transaction_pool)){
+    while(l_length(transaction_pool)<= SO_TP_SIZE){
+        /* ricevo mex */
+        msgrcv(nodes[NODE_ID].id_mq, &msg, sizeof(msg), 0, 0);
+        l_add_transaction(msg.trans,&transaction_pool);
+    }
+    if(l_length(transaction_pool)> SO_TP_SIZE){
         printf("Transaction pool is full\n");
         return 0;
     }
 
+    while(l_length(transaction_block.transaction_array)<SO_BLOCK_SIZE-1)
+    {
+        l_add_transaction(transaction_pool,&transaction_block.transaction_array);
+        transaction_pool=transaction_pool->next;
+    }
+    if(l_length(transaction_block.transaction_array)==SO_BLOCK_SIZE-1){
     /*Aggiungo transazione di reward*/
-    l_add_transaction(new_transaction(timestamp.tv_nsec,REWARD_SENDER,getpid(), block_reward,0),&transaction_pool);
+    l_add_transaction(new_transaction(timestamp.tv_nsec,REWARD_SENDER,getpid(), block_reward,0),&transaction_block.transaction_array);
     /*msgctl(nodes[NODE_ID].id_mq,0,IPC_RMID);
     TEST_ERROR;*/
+    /* aggiungo id blocco */
     r_time = (rand()%(SO_MAX_TRANS_GEN_NSEC+1-SO_MIN_TRANS_GEN_NSEC))+SO_MIN_TRANS_GEN_NSEC;
     timestamp.tv_nsec=r_time;
     nanosleep(&timestamp, NULL);
     exit(EXIT_SUCCESS);
+    }
+    }
 }
