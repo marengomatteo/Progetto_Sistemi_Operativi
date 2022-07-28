@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 
     while(l_length(transaction_block.transaction_array)<SO_BLOCK_SIZE-1)
     {
-        l_add_transaction(transaction_pool,&transaction_block.transaction_array);
+        l_add_transaction(&(*transaction_pool).transaction,&transaction_block.transaction_array);
         transaction_pool=transaction_pool->next;
     }
     if(l_length(transaction_block.transaction_array)==SO_BLOCK_SIZE-1){
