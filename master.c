@@ -99,7 +99,12 @@ int main(int argc, char **argv, char **envp){
         printf("Parametri errati\n");
         return 0;  
     }
-
+    while (1)
+    {
+        nanosleep(1000, NULL);
+        
+    }
+    
     alarm(SO_SIM_SEC);
 
   /* Create a shared memory area for nodes struct */
