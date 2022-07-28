@@ -105,7 +105,7 @@ int main(int argc, char **argv, char **envp){
     {
         nanosleep(time, NULL);
         
-    }
+    } */
     
     alarm(SO_SIM_SEC);
 
