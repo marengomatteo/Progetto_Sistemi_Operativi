@@ -14,14 +14,14 @@ transaction* new_transaction(long timestamp, int sender, int receiver, int amoun
     d->reward = reward;
     return d;
 }
-
+/* 
 typedef struct _node {
   transaction transaction;
   struct _node *next;
 } node;
 
 typedef node *list;
-
+ */
 void l_add_transaction(transaction *d, list* l){
   node *n = (node*)malloc(sizeof(node));
   n->transaction = *d;

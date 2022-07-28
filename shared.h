@@ -8,9 +8,16 @@ typedef struct _transaction {
   int reward;
 } transaction;
 
+typedef struct _node {
+  transaction transaction;
+  struct _node *next;
+} node;
+
+typedef node *list;
+
 typedef struct _block{
   int id_block;
-  transaction* transaction_array;
+  list transaction_array;
 } block;
 typedef struct _masterbook{
   block* block_transaction;

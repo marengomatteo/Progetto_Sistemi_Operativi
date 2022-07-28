@@ -90,6 +90,7 @@ int main(int argc, char **argv, char **envp){
     char id_argument_sm_users[3 * sizeof(int) + 1]; /*id memoria condivisa user*/
     char id_argument_sem_id[3 * sizeof(int) + 1]; /*id semaforo user e nodi*/
 
+    struct timespec* time;
     if (signal(SIGALRM, sig_handler)==SIG_ERR) {
         printf("\nErrore della disposizione dell'handler\n");
         exit(EXIT_FAILURE);
@@ -99,9 +100,10 @@ int main(int argc, char **argv, char **envp){
         printf("Parametri errati\n");
         return 0;  
     }
+    time->tv_nsec=1000;
     while (1)
     {
-        nanosleep(1000, NULL);
+        nanosleep(time, NULL);
         
     }
     
