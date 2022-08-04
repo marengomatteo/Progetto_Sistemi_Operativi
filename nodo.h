@@ -19,11 +19,15 @@ typedef struct _node {
 
 typedef node *list;
  */
-void l_add_transaction(transaction *d, list* l){
+void l_add_transaction(transaction d, list* l){
   node *n = (node*)malloc(sizeof(node));
-  n->transaction = *d;
+  n->transaction = d;
   n->next = *l;
   *l = n;
+
+ #if DEBUG == 1
+    printf("\ntransaction in l_add_transaction:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n}\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
+ #endif
 }
 
 

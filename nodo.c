@@ -1,17 +1,5 @@
 #define _GNU_SOURCE
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <time.h>
-#include <signal.h>
-#include <string.h>
-#include <sys/sem.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/msg.h>
-#include "master.h"
 #include "nodo.h"
 
 #define TEST_ERROR                                 \
@@ -47,19 +35,21 @@ int block_reward;
 int r_time;
 struct timespec timestamp;
 node_struct *nodes;
-
 struct sembuf sops;
-struct msgbuf_trans {
-    long mtype;      
-    transaction* trans;    
-} msg;
 
 /*Create transaction pool list*/
 list transaction_pool;
 block transaction_block;
+int num_bytes = 0;
+
+struct Message {
+    long mtype;      
+    transaction trans;    
+} msg;
 
 int main(int argc, char *argv[])
 {    
+
     /* semop in attesa che tutti i nodi e gli utenti vengano creati*/
     sops.sem_num = 0;
     sops.sem_op = 0;
@@ -74,35 +64,78 @@ int main(int argc, char *argv[])
 
     clock_gettime(CLOCK_REALTIME, &timestamp);
     TEST_ERROR;
-    while (1)
-    {
-    
-    /*Prelevo dalla coda SO_TP_SIZE-1 transazioni */
-    while(l_length(transaction_pool)<= SO_TP_SIZE){
-        /* ricevo mex */
-        msgrcv(nodes[NODE_ID].id_mq, &msg, sizeof(msg), 0, 0);
-        l_add_transaction(msg.trans,&transaction_pool);
-    }
-    if(l_length(transaction_pool)> SO_TP_SIZE){
-        printf("Transaction pool is full\n");
-        return 0;
+    #if DEBUG == 1
+        printf("prima del while 1\n");
+    #endif
+    while (1){
+        /*Prelevo dalla coda SO_TP_SIZE-1 transazioni */
+        while(l_length(transaction_pool) < SO_TP_SIZE && num_bytes >= 0){
+            #if DEBUG == 1
+                printf("ricevo la transazione\n");
+            #endif
+
+                printf("num_bytes: %d\n", num_bytes);
+            /* receiving message */
+            num_bytes = msgrcv(nodes[NODE_ID].id_mq, &msg, sizeof(struct Message), nodes[NODE_ID].pid, IPC_NOWAIT);
+            #if DEBUG == 1
+                printf("num_bytes: %d\n", num_bytes);
+            #endif
+            if(num_bytes != -1){
+                #if DEBUG == 1
+                    printf("\ntransaction nodo:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n}\n", msg.trans.timestamp, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);
+                #endif
+                l_add_transaction(msg.trans,&transaction_pool);
+            }
+            #if DEBUG == 1
+                l_print(transaction_pool);
+            #endif
+            /* error handling */
+            /* if (errno == EINTR) {
+                fprintf(stderr, "(PID=%d): interrupted by a signal while waiting for a message of type %d on Q_ID=%d. Trying again\n",
+                    getpid(), nodes[NODE_ID].pid, nodes[NODE_ID].id_mq);
+                continue;
+            }
+            if (errno == EIDRM) {
+                printf("The nodes[NODE_ID].id_mq=%d was removed. Let's terminate\n", nodes[NODE_ID].id_mq);
+                exit(0);
+            }
+            if (errno == ENOMSG) {
+                printf("No message of type=%d in nodes[NODE_ID].id_mq=%d. Not going to wait\n", nodes[NODE_ID].pid, nodes[NODE_ID].id_mq);
+                exit(0);
+            } */
+        }
+
+        if(l_length(transaction_pool) > SO_TP_SIZE){
+            printf("Transaction pool is full\n");
+            return 0;
+        }
     }
 
-    while(l_length(transaction_block.transaction_array)<SO_BLOCK_SIZE-1)
-    {
-        l_add_transaction(transaction_pool,&transaction_block.transaction_array);
-        transaction_pool=transaction_pool->next;
-    }
-    if(l_length(transaction_block.transaction_array)==SO_BLOCK_SIZE-1){
-    /*Aggiungo transazione di reward*/
+
+}
+
+  
+    
+
+
+ /* while(l_length(transaction_pool)>=0){
+           transaction_print(&transaction_pool->transaction);
+       }
+       
+
+while(l_length(transaction_block.transaction_array)<SO_BLOCK_SIZE-1) {
+       l_add_transaction(transaction_pool,&transaction_block.transaction_array);
+       transaction_pool=transaction_pool->next;
+   }
+
+if(l_length(transaction_block.transaction_array)==SO_BLOCK_SIZE-1){
+    Aggiungo transazione di reward
     l_add_transaction(new_transaction(timestamp.tv_nsec,REWARD_SENDER,getpid(), block_reward,0),&transaction_block.transaction_array);
-    /*msgctl(nodes[NODE_ID].id_mq,0,IPC_RMID);
-    TEST_ERROR;*/
-    /* aggiungo id blocco */
+    msgctl(nodes[NODE_ID].id_mq,0,IPC_RMID);
+    TEST_ERROR;
+    aggiungo id blocco 
     r_time = (rand()%(SO_MAX_TRANS_GEN_NSEC+1-SO_MIN_TRANS_GEN_NSEC))+SO_MIN_TRANS_GEN_NSEC;
     timestamp.tv_nsec=r_time;
     nanosleep(&timestamp, NULL);
     exit(EXIT_SUCCESS);
-    }
-    }
-}
+}*/  
