@@ -1,20 +1,5 @@
 #define _GNU_SOURCE
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <time.h>
-#include <math.h>
-#include <string.h>
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/ipc.h>
-#include <sys/sem.h>
-#include <sys/msg.h>
-#include <sys/shm.h>
-
 #include "master.h"
 
 #define TEST_ERROR                                 \
@@ -75,11 +60,11 @@ user_struct *user;
 
 void sig_handler(int signum){
    switch(signum){
-       case SIGALRM:
-         remove_IPC();
-       break;
-       default: 
-       break;
+        case SIGALRM:
+            remove_IPC();
+        break;
+        default:
+        break;
    }
 }
 
@@ -100,13 +85,8 @@ int main(int argc, char **argv, char **envp){
         printf("Parametri errati\n");
         return 0;  
     }
-    /*while (1)
-    {
-        nanosleep(1000, NULL);
-        
-    }
-    */
-    alarm(SO_SIM_SEC);
+   
+    alarm(20);
 
   /* Create a shared memory area for nodes struct */
     shared_nodes_id = shmget(IPC_PRIVATE, SO_NODES_NUM * sizeof(node_struct), 0600);
@@ -158,6 +138,7 @@ int main(int argc, char **argv, char **envp){
         printf("manca un secondo in meno\n");
         nanosleep(&timestamp, NULL);
     };
+
     return 0;  
 }
 
@@ -166,6 +147,7 @@ void genera_nodi(char **envp)
     char node_id[3 * sizeof(int) + 1];
     int i;
     int msgq_id;
+   
     printf("\nGenerazione nodi\n");
 
     for (i = 0; i < SO_NODES_NUM; i++)
@@ -243,6 +225,7 @@ void genera_utenti(char** envp)
 void sem_init(){
     semctl(sem_nodes_users_id, 0, SETVAL, SO_NODES_NUM+SO_USERS_NUM);
 }
+
 void remove_IPC(){
     semctl(sem_nodes_users_id,0, IPC_RMID);
     shmctl(shared_nodes_id,0, IPC_RMID);
