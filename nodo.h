@@ -1,8 +1,5 @@
 #pragma once
-#include <stdlib.h>
-#include <stdio.h>
-#include <stddef.h>
-#include <time.h>
+#include "shared.h"
 
 
 transaction* new_transaction(long timestamp, int sender, int receiver, int amount, int reward){
@@ -28,6 +25,7 @@ void l_add_transaction(transaction *d, list* l){
   n->next = *l;
   *l = n;
 }
+
 
 int l_length(list l){
   int length;
