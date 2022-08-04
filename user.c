@@ -41,11 +41,6 @@ int r_time;
 struct timespec timestamp;
 struct sembuf sops;
 
-struct Message {
-    long mtype;      
-    transaction trans;    
-} msg;
-
 int main(int argc, char *argv[])
 {
     /* semop in attesa che tutti i nodi e gli utenti vengano creati*/
@@ -88,7 +83,7 @@ int main(int argc, char *argv[])
 
         while(retry >= 0){
             if(msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(struct Message),0) < 0) TEST_ERROR;
-            
+
             if(retry==0){
                 /* notify to master that retry failed SO_RETRY times */
                 exit(EXIT_FAILURE);

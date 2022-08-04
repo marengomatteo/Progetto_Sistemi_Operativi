@@ -45,6 +45,11 @@ typedef struct user_struct{
     int pid;
 } user_struct;
 
+struct Message {
+    long mtype;      
+    transaction trans;    
+} msg;
+
 
 int stampaStatoMemoria(int shid) {
   struct shmid_ds buf;
