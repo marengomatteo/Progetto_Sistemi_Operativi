@@ -1,5 +1,16 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stddef.h>
+#include <unistd.h>
+#include <errno.h>
 #include <time.h>
- #include <sys/shm.h>
+#include <signal.h>
+#include <string.h>
+#include <sys/sem.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/msg.h>
+
 typedef struct _transaction {
   long timestamp;
   int sender;
@@ -23,6 +34,16 @@ typedef struct _masterbook{
   block* block_transaction;
 } masterbook;
 
+typedef struct node_struct {
+    int pid;
+    int id_mq;
+} node_struct;
+
+typedef struct user_struct{
+    int pid;
+} user_struct;
+
+
 int stampaStatoMemoria(int shid) {
   struct shmid_ds buf;
   if (shmctl(shid,IPC_STAT,&buf)==-1) {
@@ -41,8 +62,8 @@ int stampaStatoMemoria(int shid) {
   }
 }
 
-void transaction_print (transaction* d){
-  printf("transaction:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n}\n", d->timestamp, d->sender, d->receiver, d->amount, d->reward);
+void transaction_print (transaction d){
+  printf("transaction:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n}\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
 }
 
 /*void l_print(list l){
