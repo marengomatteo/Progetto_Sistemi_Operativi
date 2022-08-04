@@ -11,6 +11,8 @@
 #include <sys/shm.h>
 #include <sys/msg.h>
 
+#define DEBUG 1
+
 typedef struct _transaction {
   long timestamp;
   int sender;

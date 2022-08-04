@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     sops.sem_num = 0;
     sops.sem_op = 0;
     if(semop(SEM_ID, &sops, 1) == -1){
-        perror("semaforo rotto");
+        perror("semaphore broke");
         exit(EXIT_FAILURE);
     }
 
@@ -82,23 +82,24 @@ int main(int argc, char *argv[])
         msg.mtype = nodes[index_rnode].pid;
         retry=SO_RETRY;
 
-        
-        transaction_print(msg.trans);
+        #if DEBUG == 1
+            transaction_print(msg.trans);
+        #endif
 
-        while(retry>=0 && msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(struct Message),0)<0){
-            printf("fallimento\n");
+        while(retry >= 0){
+            if(msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(struct Message),0) < 0) TEST_ERROR;
+            
             if(retry==0){
-                /* notifica a master */
+                /* notify to master that retry failed SO_RETRY times */
                 exit(EXIT_FAILURE);
             }
             retry--;
-        }
-       TEST_ERROR;  
+        }  
     }
+
     r_time = (rand()%(SO_MAX_TRANS_GEN_NSEC+1-SO_MIN_TRANS_GEN_NSEC))+SO_MIN_TRANS_GEN_NSEC;
     timestamp.tv_nsec=r_time;
     nanosleep(&timestamp, NULL);
 
-  
     exit(EXIT_SUCCESS);
 }
