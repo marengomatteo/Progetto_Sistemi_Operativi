@@ -2,8 +2,8 @@ export CC="gcc"
 export CFLAGS= "-std=c89 -pedantic"
 
 #Variabili 
-export SO_USERS_NUM=2
-export SO_NODES_NUM=2
+export SO_USERS_NUM=1
+export SO_NODES_NUM=1
 export SO_BUDGET_INIT=100
 export SO_REWARD=1
 export SO_MIN_TRANS_GEN_NSEC=1000000000
@@ -25,10 +25,10 @@ user: user.o
 master.o: master.c master.h
 	${CC} -c -std=c89 -pedantic master.c
 
-nodo.o: nodo.c nodo.h
+nodo.o: nodo.c nodo.h shared.h
 	${CC} -c -std=c89 -pedantic nodo.c
 
-user.o: user.c user.h
+user.o: user.c user.h shared.h
 	${CC} -c -std=c89 -pedantic user.c
 
 clean:
