@@ -86,7 +86,7 @@ int main(int argc, char **argv, char **envp){
         return 0;  
     }
    
-    alarm(20);
+    alarm(10);
 
   /* Create a shared memory area for nodes struct */
     shared_nodes_id = shmget(IPC_PRIVATE, SO_NODES_NUM * sizeof(node_struct), 0600);

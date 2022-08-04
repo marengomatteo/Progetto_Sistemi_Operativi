@@ -45,11 +45,6 @@ typedef struct user_struct{
     int pid;
 } user_struct;
 
-struct Message {
-    long mtype;      
-    transaction trans;    
-} msg;
-
 
 int stampaStatoMemoria(int shid) {
   struct shmid_ds buf;
@@ -73,11 +68,10 @@ void transaction_print (transaction d){
   printf("transaction:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n}\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
 }
 
-/*void l_print(list l){
-	printf("transaction:\n");
+void l_print(list l){
 	for ( ; l!=NULL ; l=l->next){
-  	printf("{\n");
+  	printf("\nlista transazioni:\n{\n");
     transaction_print(l->transaction);
 	  printf("\b\b},\n");
   }
-}*/
+}
