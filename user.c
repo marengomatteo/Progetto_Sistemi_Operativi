@@ -1,17 +1,6 @@
 #define _GNU_SOURCE
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <time.h>
-#include <signal.h>
-#include <string.h>
 #include "user.h"
-#include "shared.h"
-#include <sys/sem.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/msg.h>
+
 
 #define TEST_ERROR                                 \
     if (errno)                                     \
@@ -52,9 +41,9 @@ int r_time;
 struct timespec timestamp;
 struct sembuf sops;
 
-struct msgbuf_trans {
+struct Message {
     long mtype;      
-    transaction* trans;    
+    transaction trans;    
 } msg;
 
 int main(int argc, char *argv[])
@@ -66,11 +55,9 @@ int main(int argc, char *argv[])
         perror("semaforo rotto");
         exit(EXIT_FAILURE);
     }
-    msg.trans= malloc(sizeof(transaction));
+
     curr_balance=SO_BUDGET_INIT;
 
-    printf("nodes id: %d\n", SH_NODES_ID);
-    printf("users id: %d\n", SH_USERS_ID);
     /*Mi aggancio alla memoria condivisa dei nodi*/
     nodes = shmat(SH_NODES_ID, NULL, 0);
     TEST_ERROR;
@@ -79,34 +66,34 @@ int main(int argc, char *argv[])
     users = shmat(SH_USERS_ID, NULL, 0);
     TEST_ERROR;
 
-    
     srand(getpid());
+
     if(curr_balance>=2){
-        
         index_ruser= rand() % SO_USERS_NUM;
         index_rnode= rand() % SO_NODES_NUM;
         r_number=(rand() % curr_balance-2)+2;
         calculate_reward=r_number/100*SO_REWARD;
         clock_gettime(CLOCK_REALTIME, &timestamp);
-        msg.trans->timestamp= timestamp.tv_nsec;
-        msg.trans->sender = getpid();
-        msg.trans->receiver = users[index_ruser].pid;
-        msg.trans->reward = calculate_reward;
-        msg.trans->amount = r_number-calculate_reward;
-        msg.mtype=nodes[index_rnode].pid;
+        msg.trans.timestamp = timestamp.tv_nsec;
+        msg.trans.sender = getpid();
+        msg.trans.receiver = nodes[index_rnode].pid;
+        msg.trans.reward = calculate_reward;
+        msg.trans.amount = r_number-calculate_reward;
+        msg.mtype = nodes[index_rnode].pid;
         retry=SO_RETRY;
+
         
         transaction_print(msg.trans);
 
-        while(retry>=0 && msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(msg),IPC_NOWAIT)<0){
+        while(retry>=0 && msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(struct Message),0)<0){
+            printf("fallimento\n");
             if(retry==0){
                 /* notifica a master */
                 exit(EXIT_FAILURE);
             }
             retry--;
         }
-/*         printf("\nid coda %d\n",nodes[index_rnode].id_mq);
- */        TEST_ERROR;  
+       TEST_ERROR;  
     }
     r_time = (rand()%(SO_MAX_TRANS_GEN_NSEC+1-SO_MIN_TRANS_GEN_NSEC))+SO_MIN_TRANS_GEN_NSEC;
     timestamp.tv_nsec=r_time;
