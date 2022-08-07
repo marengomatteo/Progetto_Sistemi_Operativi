@@ -58,20 +58,20 @@ int stampaStatoMemoria(int shid) {
   printf("Ultima shmat: %s\n",ctime(&buf.shm_atime));
   printf("Ultima shmdt: %s\n",ctime(&buf.shm_dtime));
   printf("Ultimo processo shmat/shmdt: %d\n",buf.shm_lpid);
-  printf("Processi connessi: %hu\n",buf.shm_nattch);
+  printf("Processi connessi: %lu\n",buf.shm_nattch);
   printf("\n");
   return 0;
   }
 }
 
 void transaction_print (transaction d){
-  printf("transaction:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n}\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
+  printf("transaction:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n},\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
 }
 
 void l_print(list l){
-	for ( ; l!=NULL ; l=l->next){
   	printf("\nlista transazioni:\n{\n");
+	for ( ; l!=NULL ; l=l->next){
     transaction_print(l->transaction);
-	  printf("\b\b},\n");
   }
+	  printf("\b\b},\n");
 }

@@ -25,9 +25,9 @@ void l_add_transaction(transaction d, list* l){
   n->next = *l;
   *l = n;
 
- #if DEBUG == 1
+ /*#if DEBUG == 1
     printf("\ntransaction in l_add_transaction:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n}\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
- #endif
+ #endif*/
 }
 
 

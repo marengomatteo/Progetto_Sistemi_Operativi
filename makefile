@@ -2,7 +2,7 @@ export CC="gcc"
 export CFLAGS= "-std=c89 -pedantic"
 
 #Variabili 
-export SO_USERS_NUM=1
+export SO_USERS_NUM=4
 export SO_NODES_NUM=1
 export SO_BUDGET_INIT=100
 export SO_REWARD=1

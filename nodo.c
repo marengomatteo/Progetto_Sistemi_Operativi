@@ -40,7 +40,7 @@ struct sembuf sops;
 /*Create transaction pool list*/
 list transaction_pool;
 block transaction_block;
-int num_bytes = 0;
+int num_bytes;
 
 struct Message {
     long mtype;      
@@ -69,27 +69,8 @@ int main(int argc, char *argv[])
     #endif
     while (1){
         /*Prelevo dalla coda SO_TP_SIZE-1 transazioni */
-        while(l_length(transaction_pool) < SO_TP_SIZE && num_bytes >= 0){
-            #if DEBUG == 1
-                printf("ricevo la transazione\n");
-            #endif
-
-                printf("num_bytes: %d\n", num_bytes);
+        while(l_length(transaction_pool) < SO_TP_SIZE){
             /* receiving message */
-            num_bytes = msgrcv(nodes[NODE_ID].id_mq, &msg, sizeof(struct Message), nodes[NODE_ID].pid, IPC_NOWAIT);
-            #if DEBUG == 1
-                printf("num_bytes: %d\n", num_bytes);
-            #endif
-            if(num_bytes != -1){
-                #if DEBUG == 1
-                    printf("\ntransaction nodo:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n}\n", msg.trans.timestamp, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);
-                #endif
-                l_add_transaction(msg.trans,&transaction_pool);
-            }
-            #if DEBUG == 1
-                l_print(transaction_pool);
-            #endif
-            /* error handling */
             /* if (errno == EINTR) {
                 fprintf(stderr, "(PID=%d): interrupted by a signal while waiting for a message of type %d on Q_ID=%d. Trying again\n",
                     getpid(), nodes[NODE_ID].pid, nodes[NODE_ID].id_mq);
@@ -101,8 +82,29 @@ int main(int argc, char *argv[])
             }
             if (errno == ENOMSG) {
                 printf("No message of type=%d in nodes[NODE_ID].id_mq=%d. Not going to wait\n", nodes[NODE_ID].pid, nodes[NODE_ID].id_mq);
-                exit(0);
+                continue;
             } */
+            if(msgrcv(nodes[NODE_ID].id_mq, &msg, sizeof(struct Message), nodes[NODE_ID].pid, 0)>0){
+                #if DEBUG == 1
+                    printf("ricevo la transazione\n");
+                #endif
+
+                #if DEBUG == 1
+                    printf("num_bytes: %d\n", num_bytes);
+                #endif
+
+                #if DEBUG == 1
+                    printf("\ntransaction nodo:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n}\n", msg.trans.timestamp, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);
+                #endif
+                l_add_transaction(msg.trans,&transaction_pool);
+                
+                #if DEBUG == 1
+                    l_print(transaction_pool);
+                #endif
+
+            }
+            /* error handling */
+           
         }
 
         if(l_length(transaction_pool) > SO_TP_SIZE){

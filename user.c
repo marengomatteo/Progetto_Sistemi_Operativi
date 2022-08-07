@@ -87,13 +87,15 @@ int main(int argc, char *argv[])
         #endif
 
         while(retry >= 0){
-            if(msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(struct Message),0) < 0) TEST_ERROR;
-            
-            if(retry==0){
-                /* notify to master that retry failed SO_RETRY times */
-                exit(EXIT_FAILURE);
+            if(msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(struct Message),0) < 0) {
+                TEST_ERROR;
+                if(retry==0){
+                    /* notify to master that retry failed SO_RETRY times */
+                    exit(EXIT_FAILURE);
+                }
+                retry--;
             }
-            retry--;
+            else break;
         }  
     }
 

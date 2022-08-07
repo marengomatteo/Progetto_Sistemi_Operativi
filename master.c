@@ -62,6 +62,7 @@ void sig_handler(int signum){
    switch(signum){
         case SIGALRM:
             remove_IPC();
+            kill(getpid(),15);
         break;
         default:
         break;
@@ -168,6 +169,10 @@ void genera_nodi(char **envp)
                 }
                 nodes[i].id_mq = msgq_id;
 
+                sops.sem_num = 0;
+                sops.sem_op = -1;
+                sops.sem_flg = 0;
+                semop(sem_nodes_users_id, &sops, 1);
                 /* INSTANZIARE CON EXECVE IL NODO, Passare parametri */
                 if (execve(NODE_NAME, node_arguments, envp) == -1){
                     perror("Could not execve");
@@ -177,10 +182,6 @@ void genera_nodi(char **envp)
                 TEST_ERROR;
                 exit(EXIT_FAILURE);
             default:
-                sops.sem_num = 0;
-                sops.sem_op = -1;
-                sops.sem_flg = 0;
-                semop(sem_nodes_users_id, &sops, 1);
                 TEST_ERROR;
                 break;
         }
@@ -204,6 +205,11 @@ void genera_utenti(char** envp)
                 /*Inserisco dentro la memoria condivisa il pid dello user*/
                 user[i].pid=getpid();
  
+                sops.sem_num = 0;
+                sops.sem_op = -1;
+                sops.sem_flg = 0;
+                semop(sem_nodes_users_id, &sops, 1);
+                TEST_ERROR;
                 if (execve(USER_NAME, user_arguments, envp) == -1){
                     perror("Could not execve");
                     exit(EXIT_FAILURE);
@@ -212,11 +218,6 @@ void genera_utenti(char** envp)
                 TEST_ERROR;
                 exit(EXIT_FAILURE);
             default:
-                sops.sem_num = 0;
-                sops.sem_op = -1;
-                sops.sem_flg = 0;
-                semop(sem_nodes_users_id, &sops, 1);
-                TEST_ERROR;
             break;
         }
     }
@@ -227,8 +228,14 @@ void sem_init(){
 }
 
 void remove_IPC(){
+    int i;
+    for (i=0;i<SO_NODES_NUM ;i++)
+    {
+        msgctl(nodes[i].id_mq, IPC_RMID, NULL);
+    }
     semctl(sem_nodes_users_id,0, IPC_RMID);
     shmctl(shared_nodes_id,0, IPC_RMID);
     shmctl(shared_masterbook_id,0, IPC_RMID);
     shmctl(shared_users_id,0, IPC_RMID);
+    
 }
