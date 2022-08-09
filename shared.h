@@ -13,6 +13,9 @@
 
 #define DEBUG 1
 
+#define SO_BLOCK_SIZE 100
+#define SO_REGISTRY_SIZE 1000
+
 typedef struct _transaction {
   long timestamp;
   int sender;
@@ -30,11 +33,8 @@ typedef node *list;
 
 typedef struct _block{
   int id_block;
-  list transaction_array;
+  struct _transaction transaction_array[SO_BLOCK_SIZE];
 } block;
-typedef struct _masterbook{
-  block* block_transaction;
-} masterbook;
 
 typedef struct node_struct {
     int pid;
@@ -43,6 +43,9 @@ typedef struct node_struct {
 
 typedef struct user_struct{
     int pid;
+    int budget;
+    int status; /* 0 dead, 1 alive */
+    int last_block_read;
 } user_struct;
 
 

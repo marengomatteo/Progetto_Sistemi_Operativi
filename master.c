@@ -22,10 +22,8 @@
 #define SO_MAX_TRANS_GEN_NSEC atoi(getenv("SO_MAX_TRANS_GEN_NSEC"))
 #define SO_RETRY atoi(getenv("SO_RETRY"))
 #define SO_TP_SIZE atoi(getenv("SO_TP_SIZE"))
-#define SO_BLOCK_SIZE 100
 #define SO_MIN_TRANS_PROC_NSEC atoi(getenv("SO_MIN_TRANS_PROC_NSEC"))
 #define SO_MAX_TRANS_PROC_NSEC atoi(getenv("SO_MAX_TRANS_PROC_NSEC"))
-#define SO_REGISTRY_SIZE 1000
 #define SO_SIM_SEC atoi(getenv("SO_SIM_SEC"))
 #define SO_FRIENDS_NUM atoi(getenv("SO_FRIENDS_NUM"))
 #define SO_HOPS atoi(getenv("SO_HOPS"))
@@ -54,7 +52,7 @@ char *user_arguments[6] = {USER_NAME};
 
 struct timespec timestamp;
 node_struct *nodes;
-masterbook *master_book;
+block *master_book;
 user_struct *user;
 
 
@@ -99,7 +97,7 @@ int main(int argc, char **argv, char **envp){
     /* Creazione masterbook */
     shared_masterbook_id = shmget(IPC_PRIVATE, SO_REGISTRY_SIZE * SO_BLOCK_SIZE * sizeof(block), 0600);
     TEST_ERROR;
-    master_book =(masterbook*)shmat(shared_masterbook_id, NULL, 0);
+    master_book =(block*)shmat(shared_masterbook_id, NULL, 0);
     TEST_ERROR;
 
     /* Creazione memoria condivisa per user*/

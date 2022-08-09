@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
 #include "user.h"
-
+#include <math.h>
 
 #define TEST_ERROR                                 \
     if (errno)                                     \
@@ -72,12 +72,13 @@ int main(int argc, char *argv[])
         index_ruser= rand() % SO_USERS_NUM;
         index_rnode= rand() % SO_NODES_NUM;
         r_number=(rand() % curr_balance-2)+2;
-        calculate_reward=r_number/100*SO_REWARD;
+        printf("numero rando: %d\n",r_number);
+        calculate_reward=round(r_number/100*SO_REWARD);
         clock_gettime(CLOCK_REALTIME, &timestamp);
         msg.trans.timestamp = timestamp.tv_nsec;
         msg.trans.sender = getpid();
         msg.trans.receiver = nodes[index_rnode].pid;
-        msg.trans.reward = calculate_reward;
+        msg.trans.reward = (calculate_reward > 1) ? calculate_reward : 1;
         msg.trans.amount = r_number-calculate_reward;
         msg.mtype = nodes[index_rnode].pid;
         retry=SO_RETRY;
