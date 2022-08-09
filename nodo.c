@@ -37,7 +37,7 @@ struct timespec timestamp;
 node_struct *nodes;
 block* masterbook;
 struct sembuf sops;
-
+int id=0;
 /*Create transaction pool list*/
 list transaction_pool;
 block transaction_block;
@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
                 printf("\ntransaction nodo:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n}\n", msg.trans.timestamp, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);
             #endif
             l_add_transaction(msg.trans,&transaction_pool);
+            l_print(transaction_pool);
                 
         }
 
@@ -95,12 +96,14 @@ int main(int argc, char *argv[])
                 printf("aggiungo transazione dalla transaction pool al blocco\n");
             #endif
             transaction_block.transaction_array[index_block] = (*transaction_pool).transaction;
+            transaction_block.id_block=id;
+            id++;
             index_block++;
             block_reward+= (*transaction_pool).transaction.reward;
-            transaction_pool = transaction_pool->next;
+            transaction_pool = (*transaction_pool).next;
             #if DEBUG == 1
                 printf("lista transazioni nel blocco\n");
-                l_print(transaction_block.transaction_array);
+                a_print(transaction_block);
             #endif
         }
 
@@ -110,11 +113,15 @@ int main(int argc, char *argv[])
             transaction_block.transaction_array[index_block] = new_transaction(timestamp.tv_nsec,REWARD_SENDER,getpid(), block_reward,0);
             block_reward = 0;
             r_time = (rand()%(SO_MAX_TRANS_GEN_NSEC+1-SO_MIN_TRANS_GEN_NSEC))+SO_MIN_TRANS_GEN_NSEC;
-            timestamp.tv_nsec=r_time;
+            timestamp.tv_nsec = r_time;
             nanosleep(&timestamp, NULL);
         }
 
-
+        if(transaction_block.id_block<SO_REGISTRY_SIZE-1){
+            masterbook[transaction_block.id_block] = transaction_block;
+            printf("masterbook:\n");
+            a_print(masterbook[transaction_block.id_block]);
+        }
     
 
     }

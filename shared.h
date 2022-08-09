@@ -13,7 +13,7 @@
 
 #define DEBUG 1
 
-#define SO_BLOCK_SIZE 100
+#define SO_BLOCK_SIZE 3
 #define SO_REGISTRY_SIZE 1000
 
 typedef struct _transaction {
@@ -75,6 +75,15 @@ void l_print(list l){
   	printf("\nlista transazioni:\n{\n");
 	for ( ; l!=NULL ; l=l->next){
     transaction_print(l->transaction);
+  }
+	  printf("\b\b},\n");
+}
+
+void a_print(block l){
+  int i;  
+	printf("\nmasterbook:\n{\n");
+	for ( i = 0; i < SO_BLOCK_SIZE ; i++){
+    transaction_print(l.transaction_array[i]);
   }
 	  printf("\b\b},\n");
 }
