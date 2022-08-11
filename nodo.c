@@ -38,11 +38,11 @@ struct timespec timestamp;
 node_struct *nodes;
 block* masterbook;
 struct sembuf sops;
-int id = 0;
+int id_blocco = 0;
 /*Create transaction pool list*/
 list transaction_pool;
 block transaction_block;
-int index_block;
+int index_block = 0;
 struct Message {
     long mtype;      
     transaction trans;    
@@ -74,10 +74,13 @@ int main(int argc, char *argv[])
         printf("prima del while 1\n");
     #endif
 
-    /* Richiamo la funzione che inizializza le risorse delle informazioni condivise del masterbook*/
-    masterbook_r_init();
-
+    /* Richiamo la funzione che inizializza le risorse delle informazioni condivise del masterbook */
+    masterbook_r_init(0);
+    
     while (1){
+
+        transaction_block.id_block = id_blocco;
+        
         /*Prelevo dalla coda SO_TP_SIZE-1 transazioni */
         while(l_length(transaction_pool) < SO_TP_SIZE && msgrcv(nodes[NODE_ID].id_mq, &msg, sizeof(struct Message), nodes[NODE_ID].pid,IPC_NOWAIT)>0){
             /* receiving message */
@@ -97,16 +100,16 @@ int main(int argc, char *argv[])
             return -1;
         }
 
-        index_block = nuovo_id_blocco();
-
+       
+        
         while(l_length(transaction_pool)>0 && index_block < SO_BLOCK_SIZE-1) {
             #if DEBUG == 1
                 printf("aggiungo transazione dalla transaction pool al blocco\n");
             #endif
+
             transaction_block.transaction_array[index_block] = (*transaction_pool).transaction;
-            transaction_block.id_block=id;
-            id++;
-           
+            index_block++;
+
             block_reward+= (*transaction_pool).transaction.reward;
             transaction_pool = (*transaction_pool).next;
             #if DEBUG == 1
@@ -123,13 +126,12 @@ int main(int argc, char *argv[])
             r_time = (rand()%(SO_MAX_TRANS_GEN_NSEC+1-SO_MIN_TRANS_GEN_NSEC))+SO_MIN_TRANS_GEN_NSEC;
             timestamp.tv_nsec = r_time;
             nanosleep(&timestamp, NULL);
-
         }
 
         if(transaction_block.id_block<SO_REGISTRY_SIZE-1){
             masterbook[transaction_block.id_block] = transaction_block;
-            /*printf("masterbook:\n");*/
-            a_print(masterbook[transaction_block.id_block]);
+            /*printf("masterbook:\n");
+            a_print(masterbook[transaction_block.id_block]);*/
         }
         
     }

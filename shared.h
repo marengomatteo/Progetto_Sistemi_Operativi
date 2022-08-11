@@ -81,24 +81,31 @@ void a_print(block l){
 
 /*Da rivedere mettendo tutto in shared.c*/
 #define MASTERBOOK_BLOCK_KEY 9826
-#define MASTERBOOK_SEM_KEY 1412
+key_t master_sem=10;
 
 masterbook_struct* shd_masterbook_info;
 int shared_masterbook_info_id;
-int sem_id_block ;
+int sem_id_block;
 
 
-int masterbook_r_init(){
+int masterbook_r_init(int create){
 
-    printf("init masterbook");
+    printf("init masterbook\n");
     /* Creazione memoria condivisa per masterbook info*/
-    shared_masterbook_info_id = shmget(MASTERBOOK_BLOCK_KEY, sizeof(masterbook_struct), IPC_CREAT | 0666);
+    shared_masterbook_info_id = shmget(MASTERBOOK_BLOCK_KEY, sizeof(masterbook_struct), create == 1 ? IPC_CREAT | 0666 : 0666);
+    if(shared_masterbook_info_id == -1){
+        printf("Errore durante la creazione della shared memory: %s\n",strerror(errno));
+        return -1;
+    }
 
     shd_masterbook_info = (masterbook_struct*)shmat(shared_masterbook_info_id, NULL,0);
 
     /* Inizializzo il semaforo*/
-    sem_id_block = semget(MASTERBOOK_SEM_KEY, 1, 0600);
-
+    sem_id_block = semget(master_sem, 1, create == 1 ? IPC_CREAT | 0666 : 0666);
+     if(sem_id_block == -1){
+        printf("Errore durante la creazione del semaforo: %s\n",strerror(errno));
+        return -1;
+    }
     semctl(sem_id_block, 0, SETVAL, 1);
 
     return 0;

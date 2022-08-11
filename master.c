@@ -143,7 +143,7 @@ int main(int argc, char **argv, char **envp){
     user_arguments[3] = id_argument_sm_masterbook;
     user_arguments[5] = id_argument_sem_id;
 
-    masterbook_r_init();
+    masterbook_r_init(1);
 
     #if DEBUG == 1
         printf("memoria condivisa users: %d\n", shared_users_id);

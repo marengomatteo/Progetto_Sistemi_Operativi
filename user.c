@@ -56,8 +56,8 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    /* Richiamo la funzione che inizializza le risorse delle informazioni condivise del masterbook*/
-    masterbook_r_init();
+    /* Richiamo la funzione che inizializza le risorse delle informazioni condivise del masterbook
+    masterbook_r_init();*/
 
     /* Current Balance: calcolare TODO*/
     curr_balance = SO_BUDGET_INIT;
@@ -79,7 +79,6 @@ int main(int argc, char *argv[])
         
         index_rnode= rand() % SO_NODES_NUM;
         r_number=(rand() % curr_balance-2)+2;
-        printf("numero rando: %d\n",r_number);
         calculate_reward=round(r_number/100*SO_REWARD);
         clock_gettime(CLOCK_REALTIME, &timestamp);
         msg.trans.timestamp = timestamp.tv_nsec;
