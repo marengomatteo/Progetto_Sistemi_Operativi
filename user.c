@@ -69,7 +69,10 @@ int main(int argc, char *argv[])
     srand(getpid());
 
     if(curr_balance>=2){
-        index_ruser= rand() % SO_USERS_NUM;
+        do{
+            index_ruser= rand() % SO_USERS_NUM;
+        }while (index_ruser==USER_ID);
+        
         index_rnode= rand() % SO_NODES_NUM;
         r_number=(rand() % curr_balance-2)+2;
         printf("numero rando: %d\n",r_number);
@@ -77,7 +80,7 @@ int main(int argc, char *argv[])
         clock_gettime(CLOCK_REALTIME, &timestamp);
         msg.trans.timestamp = timestamp.tv_nsec;
         msg.trans.sender = getpid();
-        msg.trans.receiver = nodes[index_rnode].pid;
+        msg.trans.receiver = users[index_ruser].pid;
         msg.trans.reward = (calculate_reward > 1) ? calculate_reward : 1;
         msg.trans.amount = r_number-calculate_reward;
         msg.mtype = nodes[index_rnode].pid;
