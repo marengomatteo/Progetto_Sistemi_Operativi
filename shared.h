@@ -36,36 +36,26 @@ typedef struct _block{
   struct _transaction transaction_array[SO_BLOCK_SIZE];
 } block;
 
-typedef struct node_struct {
+typedef struct _node_struct {
     int pid;
     int id_mq;
 } node_struct;
 
-typedef struct user_struct{
+typedef struct _user_struct{
     int pid;
     int budget;
     int status; /* 0 dead, 1 alive */
     int last_block_read;
 } user_struct;
 
+typedef struct _masterbook_struct {
+  int last_block_id;
+  int block_count;
+} masterbook_struct;
 
-int stampaStatoMemoria(int shid) {
-  struct shmid_ds buf;
-  if (shmctl(shid,IPC_STAT,&buf)==-1) {
-    fprintf(stderr, "%s: %d. Errore in shmctl #%03d: %s\n", __FILE__, __LINE__, errno, strerror(errno));
-    return -1;
-  } else {
-  printf("\nSTATISTICHE\n");
-  printf("AreaId: %d\n",shid);
-  printf("Dimensione: %ld\n",buf.shm_segsz);
-  printf("Ultima shmat: %s\n",ctime(&buf.shm_atime));
-  printf("Ultima shmdt: %s\n",ctime(&buf.shm_dtime));
-  printf("Ultimo processo shmat/shmdt: %d\n",buf.shm_lpid);
-  printf("Processi connessi: %lu\n",buf.shm_nattch);
-  printf("\n");
-  return 0;
-  }
-}
+/*
+int masterbook_r_init();
+int nuovo_id_blocco();*/
 
 void transaction_print (transaction d){
   printf("transaction:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n},\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
@@ -86,4 +76,61 @@ void a_print(block l){
     transaction_print(l.transaction_array[i]);
   }
 	  printf("\b\b},\n");
+}
+
+
+/*Da rivedere mettendo tutto in shared.c*/
+#define MASTERBOOK_BLOCK_KEY 9826
+#define MASTERBOOK_SEM_KEY 1412
+
+masterbook_struct* shd_masterbook_info;
+int shared_masterbook_info_id;
+int sem_id_block ;
+
+
+int masterbook_r_init(){
+
+    printf("init masterbook");
+    /* Creazione memoria condivisa per masterbook info*/
+    shared_masterbook_info_id = shmget(MASTERBOOK_BLOCK_KEY, sizeof(masterbook_struct), IPC_CREAT | 0666);
+
+    shd_masterbook_info = (masterbook_struct*)shmat(shared_masterbook_info_id, NULL,0);
+
+    /* Inizializzo il semaforo*/
+    sem_id_block = semget(MASTERBOOK_SEM_KEY, 1, 0600);
+
+    semctl(sem_id_block, 0, SETVAL, 1);
+
+    return 0;
+}
+
+/* richiede un nuovo id  */
+int nuovo_id_blocco() {
+    
+    int block_id;
+    struct sembuf sop_p; /* prende la risorsa */
+    struct sembuf sop_r; /* rilascia la risorsa */
+    
+    /* Riservo la risorsa */
+    sop_p.sem_num = 0;
+    sop_p.sem_op = -1;
+    sop_p.sem_flg = 0;
+
+    /* Rilascio la risorsa */
+    sop_r.sem_num = 0;
+    sop_r.sem_op = 1;
+    sop_r.sem_flg = 0;
+
+    if (semop(sem_id_block, &sop_p, 1) == -1) {
+        return -1;
+    }
+
+    block_id = shd_masterbook_info->last_block_id;
+    shd_masterbook_info->last_block_id++;
+
+    /* Rilascio il semaforo */
+    if (semop(sem_id_block, &sop_r, 1) == -1) {
+        return -1;
+    }
+    return block_id;
 }
