@@ -56,7 +56,11 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    curr_balance=SO_BUDGET_INIT;
+    /* Richiamo la funzione che inizializza le risorse delle informazioni condivise del masterbook*/
+    masterbook_r_init();
+
+    /* Current Balance: calcolare TODO*/
+    curr_balance = SO_BUDGET_INIT;
 
     /*Mi aggancio alla memoria condivisa dei nodi*/
     nodes = shmat(SH_NODES_ID, NULL, 0);

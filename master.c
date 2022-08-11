@@ -72,6 +72,7 @@ int main(int argc, char **argv, char **envp){
     char id_argument_sm_nodes[3 * sizeof(int) + 1]; /*id memoria condivisa nodi*/
     char id_argument_sm_masterbook[3 * sizeof(int) + 1]; /*id memoria condivisa master book*/
     char id_argument_sm_users[3 * sizeof(int) + 1]; /*id memoria condivisa user*/
+
     char id_argument_sem_id[3 * sizeof(int) + 1]; /*id semaforo user e nodi*/
 
     struct timespec* time;
@@ -79,7 +80,7 @@ int main(int argc, char **argv, char **envp){
         printf("\nErrore della disposizione dell'handler\n");
         exit(EXIT_FAILURE);
     }
-    if(SO_TP_SIZE<=SO_BLOCK_SIZE) {
+    if(SO_TP_SIZE <= SO_BLOCK_SIZE) {
         remove_IPC();
         printf("Parametri errati\n");
         return 0;  
@@ -87,47 +88,67 @@ int main(int argc, char **argv, char **envp){
    
     alarm(10);
 
-  /* Create a shared memory area for nodes struct */
+    /* Create a shared memory area for nodes struct */
     shared_nodes_id = shmget(IPC_PRIVATE, SO_NODES_NUM * sizeof(node_struct), 0600);
-    TEST_ERROR;
+    if(shared_nodes_id == -1){
+        printf("Errore durante la creazione della shared memory: %s\n",strerror(errno));
+        return -1;
+    }
     /* Attach the shared memory to a pointer */
     nodes = (node_struct *)shmat(shared_nodes_id, NULL, 0);
-    TEST_ERROR;
 
     /* Creazione masterbook */
     shared_masterbook_id = shmget(IPC_PRIVATE, SO_REGISTRY_SIZE * SO_BLOCK_SIZE * sizeof(block), 0600);
-    TEST_ERROR;
+    if(shared_masterbook_id == -1){
+        printf("Errore durante la creazione della shared memory: %s\n",strerror(errno));
+        return -1;
+    }
     master_book =(block*)shmat(shared_masterbook_id, NULL, 0);
-    TEST_ERROR;
+
 
     /* Creazione memoria condivisa per user*/
-    shared_users_id = shmget(IPC_PRIVATE, SO_USERS_NUM*sizeof(int),0600);
-    TEST_ERROR;
+    shared_users_id = shmget(IPC_PRIVATE, SO_USERS_NUM*sizeof(user_struct),0600);
+    if(shared_users_id == -1){
+        printf("Errore durante la creazione della shared memory: %s\n",strerror(errno));
+        return -1;
+    }
     user = (user_struct*)shmat(shared_users_id, NULL,0);
-    TEST_ERROR;
 
-    /* Creazione del semaforo per inizializzare user e nodi*/ 
+
+    /* Creazione del semaforo per inizializzare user e nodi */ 
     sem_nodes_users_id = semget(IPC_PRIVATE, 1, 0600);
-    TEST_ERROR;
-    sem_init();
-    printf("id semaforo: %d\n", sem_nodes_users_id);
+    if (sem_nodes_users_id == -1) {
+    	printf("Errore durante la creazione del semaforo: %s\n",strerror(errno));
+        return -1;
+	}
 
-    /*Converte da int a char gli id delle memorie condivise*/
+    /* Inizializzazione semafori */
+    sem_init();
+
+    /* Converte da int a char gli id delle memorie condivise */
     sprintf(id_argument_sm_nodes, "%d", shared_nodes_id);
     sprintf(id_argument_sm_masterbook,"%d",shared_masterbook_id);
     sprintf(id_argument_sm_users,"%d",shared_users_id);
+  
     sprintf(id_argument_sem_id, "%d", sem_nodes_users_id);
+
     /* Argomenti per nodo*/
     node_arguments[1] = id_argument_sm_nodes;
     node_arguments[2] = id_argument_sem_id;
     node_arguments[4] = id_argument_sm_masterbook;
+
     /* Argomenti per user*/
     user_arguments[1] = id_argument_sm_users;
     user_arguments[2] = id_argument_sm_nodes;
     user_arguments[3] = id_argument_sm_masterbook;
     user_arguments[5] = id_argument_sem_id;
-    printf("memoria condivisa users: %d\n", shared_users_id);
-    printf("memoria condivisa nodes: %d\n", shared_nodes_id);
+
+    masterbook_r_init();
+
+    #if DEBUG == 1
+        printf("memoria condivisa users: %d\n", shared_users_id);
+        printf("memoria condivisa nodes: %d\n", shared_nodes_id);
+    #endif
 
     genera_nodi(envp);
     genera_utenti(envp);
@@ -177,10 +198,8 @@ void genera_nodi(char **envp)
                     exit(EXIT_FAILURE);
                 }
             case -1:
-                TEST_ERROR;
                 exit(EXIT_FAILURE);
             default:
-                TEST_ERROR;
                 break;
         }
     }
@@ -202,18 +221,19 @@ void genera_utenti(char** envp)
 
                 /*Inserisco dentro la memoria condivisa il pid dello user*/
                 user[i].pid=getpid();
- 
+
                 sops.sem_num = 0;
                 sops.sem_op = -1;
                 sops.sem_flg = 0;
-                semop(sem_nodes_users_id, &sops, 1);
-                TEST_ERROR;
+                if(semop(sem_nodes_users_id, &sops, 1)<0){
+                    printf("Errore semaforo\n");
+                }
+               
                 if (execve(USER_NAME, user_arguments, envp) == -1){
                     perror("Could not execve");
                     exit(EXIT_FAILURE);
                 }
             case -1:
-                TEST_ERROR;
                 exit(EXIT_FAILURE);
             default:
             break;

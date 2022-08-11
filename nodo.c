@@ -21,6 +21,7 @@
 #define SH_SEM_ID atoi(argv[2])
 #define NODE_ID atoi(argv[3])
 #define MASTERBOOK_ID atoi(argv[4])
+
 #define REWARD_SENDER -1 
 #define SO_MIN_TRANS_GEN_NSEC atoi(getenv("SO_MIN_TRANS_GEN_NSEC"))
 #define SO_MAX_TRANS_GEN_NSEC atoi(getenv("SO_MAX_TRANS_GEN_NSEC"))
@@ -31,21 +32,22 @@
 #define ID_READY 0;
 
 int sem_nodes_id;
-int block_reward=0;
+int block_reward = 0;
 int r_time;
 struct timespec timestamp;
 node_struct *nodes;
 block* masterbook;
 struct sembuf sops;
-int id=0;
+int id = 0;
 /*Create transaction pool list*/
 list transaction_pool;
 block transaction_block;
-int index_block = 0;
+int index_block;
 struct Message {
     long mtype;      
     transaction trans;    
 } msg;
+
 
 int main(int argc, char *argv[])
 {    
@@ -55,7 +57,6 @@ int main(int argc, char *argv[])
     sops.sem_op = 0;
     semop(SH_SEM_ID, &sops, 1);
 
-    printf("sono in nodo\n");
     /* Mi attacco alle memorie condivise */
     nodes = shmat(SH_NODES_ID, NULL, 0);
     TEST_ERROR;
@@ -72,6 +73,10 @@ int main(int argc, char *argv[])
     #if DEBUG == 1
         printf("prima del while 1\n");
     #endif
+
+    /* Richiamo la funzione che inizializza le risorse delle informazioni condivise del masterbook*/
+    masterbook_r_init();
+
     while (1){
         /*Prelevo dalla coda SO_TP_SIZE-1 transazioni */
         while(l_length(transaction_pool) < SO_TP_SIZE && msgrcv(nodes[NODE_ID].id_mq, &msg, sizeof(struct Message), nodes[NODE_ID].pid,IPC_NOWAIT)>0){
@@ -88,43 +93,47 @@ int main(int argc, char *argv[])
         }
 
         if(l_length(transaction_pool) > SO_TP_SIZE){
-            return 0;
+            printf("transaction pool piena");
+            return -1;
         }
 
-        while(l_length(transaction_pool)>0 && index_block<SO_BLOCK_SIZE-1) {
+        index_block = nuovo_id_blocco();
+
+        while(l_length(transaction_pool)>0 && index_block < SO_BLOCK_SIZE-1) {
             #if DEBUG == 1
                 printf("aggiungo transazione dalla transaction pool al blocco\n");
             #endif
             transaction_block.transaction_array[index_block] = (*transaction_pool).transaction;
             transaction_block.id_block=id;
             id++;
-            index_block++;
+           
             block_reward+= (*transaction_pool).transaction.reward;
             transaction_pool = (*transaction_pool).next;
             #if DEBUG == 1
                 printf("lista transazioni nel blocco\n");
-                a_print(transaction_block);
             #endif
         }
 
-        if(index_block==SO_BLOCK_SIZE-1){
-            /*Add reward transaction*/
-            printf("block reward: %d\n", block_reward);
+        if(index_block == SO_BLOCK_SIZE-1){
+            /*Add reward transaction
+            printf("block reward: %d\n", block_reward);*/
+           
             transaction_block.transaction_array[index_block] = new_transaction(timestamp.tv_nsec,REWARD_SENDER,getpid(), block_reward,0);
             block_reward = 0;
             r_time = (rand()%(SO_MAX_TRANS_GEN_NSEC+1-SO_MIN_TRANS_GEN_NSEC))+SO_MIN_TRANS_GEN_NSEC;
             timestamp.tv_nsec = r_time;
             nanosleep(&timestamp, NULL);
+
         }
 
         if(transaction_block.id_block<SO_REGISTRY_SIZE-1){
             masterbook[transaction_block.id_block] = transaction_block;
-            printf("masterbook:\n");
+            /*printf("masterbook:\n");*/
             a_print(masterbook[transaction_block.id_block]);
         }
-    
-
+        
     }
+
 }
 
   
