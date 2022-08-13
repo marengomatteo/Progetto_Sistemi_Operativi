@@ -42,6 +42,7 @@ typedef struct _block{
 typedef struct _node_struct {
     int pid;
     int id_mq;
+    int budget;
 } node_struct;
 
 typedef struct _user_struct{
@@ -54,20 +55,20 @@ typedef struct _user_struct{
 typedef struct _masterbook_struct {
   int last_block_id;
   int block_count;
-  int sem_id_block;
+  int sem_masterbook;
 } masterbook_struct;
 
 
 void transaction_print (transaction d){
-  printf("transaction:{\n\ttimestamp: %ld,\n\tsender: %d,\n\treceiver: %d,\n\tamount: %d,\n\treward: %d\n},\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
+  printf("transaction:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d},\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
 }
 
 void l_print(list l){
-  	printf("\nlista transazioni:\n{\n");
+  	printf("\n-----lista transazioni:-----\n");
 	for ( ; l!=NULL ; l=l->next){
     transaction_print(l->transaction);
   }
-	  printf("\b\b},\n");
+	  printf("-------");
 }
 
 void a_print(block l){

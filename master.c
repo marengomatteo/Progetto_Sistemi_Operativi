@@ -20,13 +20,11 @@
 #define USER_NAME "user"
 
 /* ID IPC Semaforo globale */
+int sem_users_id;
 int sem_nodes_users_id;
 int sem_masterbook_id;
-struct sembuf sops;
-char sem_n_id[3 * sizeof(int) + 1];
 
-int node_param_id;
-int user_param_id;
+struct sembuf sops;
 
 /* Array per tener traccia delle risorse create SHAREDMEMORY */
 int shared_nodes_id; /* id memoria condivisa dei nodi*/
@@ -34,7 +32,7 @@ int shared_masterbook_id; /* id mlibro mastro*/
 int shared_users_id; /* id memoria condivisa degli user*/
 
 char *node_arguments[6] = {NODE_NAME};
-char *user_arguments[7] = {USER_NAME};
+char *user_arguments[8] = {USER_NAME};
 
 struct timespec timestamp;
 node_struct *nodes;
@@ -46,6 +44,8 @@ int shared_masterbook_info_id;
 void sig_handler(int signum){
    switch(signum){
         case SIGALRM:
+            remove_users();
+            remove_nodes();
             remove_IPC();
             kill(getpid(),15);
         break;
@@ -57,23 +57,23 @@ void sig_handler(int signum){
 int main(int argc, char **argv, char **envp){
 
     char id_argument_sm_nodes[3 * sizeof(int) + 1]; /*id memoria condivisa nodi*/
-    char id_argument_sm_masterbook[3 * sizeof(int) + 1]; /*id memoria condivisa master book*/
     char id_argument_sm_users[3 * sizeof(int) + 1]; /*id memoria condivisa user*/
+    char id_argument_sm_masterbook[3 * sizeof(int) + 1]; /*id memoria condivisa master book*/
     char id_argument_sm_masterinfo[3 * sizeof(int) + 1]; /*id memoria condivisa masterbook*/
 
     char id_argument_sem_id[3 * sizeof(int) + 1]; /*id semaforo user e nodi*/
+    char id_argument_sem_users_id[3*sizeof(int)+1]; /*id semaforo per user*/
     char id_argument_sem_masterbook_id[3 * sizeof(int) + 1]; /*id semaforo per scrivere e leggere su masterbook*/
-
 
     struct timespec* time;
     if (signal(SIGALRM, sig_handler)==SIG_ERR) {
         printf("\nErrore della disposizione dell'handler\n");
         exit(EXIT_FAILURE);
     }
+
     if(SO_TP_SIZE <= SO_BLOCK_SIZE) {
-        remove_IPC();
         printf("Parametri errati\n");
-        return 0;  
+        exit(EXIT_FAILURE);
     }
    
     alarm(10);
@@ -94,7 +94,6 @@ int main(int argc, char **argv, char **envp){
         return -1;
     }
     master_book =(block*)shmat(shared_masterbook_id, NULL, 0);
-
 
     /* Creazione memoria condivisa per user*/
     shared_users_id = shmget(IPC_PRIVATE, SO_USERS_NUM*sizeof(user_struct),0600);
@@ -119,9 +118,7 @@ int main(int argc, char **argv, char **envp){
     if(shd_masterbook_info->sem_masterbook == -1){
         printf("Errore durante la creazione del semaforo delle informazioni sul masterbook: %s\n",strerror(errno));
         return -1;
-    }
-    semctl(shd_masterbook_info->sem_masterbook, 0, SETVAL, 1);
-    
+    }    
 
     /* Creazione del semaforo per inizializzare user e nodi */ 
     sem_nodes_users_id = semget(IPC_PRIVATE, 1, IPC_CREAT | 0600);
@@ -136,6 +133,13 @@ int main(int argc, char **argv, char **envp){
     	printf("Errore durante la creazione del semaforo users e nodes: %s\n",strerror(errno));
         return -1;
 	}
+    
+    /* Creazione del semaforo per poter accedere alle informazioni dello user */
+    sem_users_id = semget(IPC_PRIVATE, 1, IPC_CREAT | 0600);
+    if(sem_users_id == -1){
+        printf("Errore durante la creazione del semaforo per accedere alle informazioni dello user: %s\n", strerror(errno));
+        return -1;
+    }
 
     /* Inizializzazione semafori */
     sem_init();
@@ -148,6 +152,7 @@ int main(int argc, char **argv, char **envp){
 
     sprintf(id_argument_sem_id, "%d", sem_nodes_users_id);
     sprintf(id_argument_sem_masterbook_id,"%d",sem_masterbook_id);
+    sprintf(id_argument_sem_users_id,"%d",sem_users_id);
 
     /* Argomenti per nodo*/
     node_arguments[0] = id_argument_sm_nodes;
@@ -163,7 +168,7 @@ int main(int argc, char **argv, char **envp){
     user_arguments[4] = id_argument_sem_id;
     user_arguments[5] = id_argument_sm_masterinfo;
     user_arguments[6] = id_argument_sem_masterbook_id;
-
+    user_arguments[7] = id_argument_sem_users_id;
 
 
     #if DEBUG == 1
@@ -176,6 +181,8 @@ int main(int argc, char **argv, char **envp){
 
     timestamp.tv_sec=1;
     while(1) {
+        stampa_utenti();
+        stampa_nodi();
         printf("manca un secondo in meno\n");
         nanosleep(&timestamp, NULL);
     };
@@ -189,8 +196,6 @@ void genera_nodi(char **envp)
     int i;
     int msgq_id;
    
-    printf("\nGenerazione nodi\n");
-
     for (i = 0; i < SO_NODES_NUM; i++)
     {
         switch (fork())
@@ -265,6 +270,9 @@ void genera_utenti(char** envp)
 void sem_init(){
     semctl(sem_nodes_users_id, 0, SETVAL, SO_NODES_NUM+SO_USERS_NUM);
     semctl(sem_masterbook_id, 0, SETVAL, 1);
+    semctl(shd_masterbook_info->sem_masterbook, 0, SETVAL, 1);
+    /* Inizializzare semaforo ad array di semafori*/
+    semctl(sem_users_id, 0, SETVAL, 1);
 }
 
 void remove_IPC(){
@@ -274,9 +282,41 @@ void remove_IPC(){
         msgctl(nodes[i].id_mq, IPC_RMID, NULL);
     }
     semctl(sem_nodes_users_id,0, IPC_RMID);
+    semctl(sem_users_id, 0, IPC_RMID);
+    semctl(sem_masterbook_id, 0, IPC_RMID);
+    semctl(shd_masterbook_info->sem_masterbook, 0, IPC_RMID);
     shmctl(shared_nodes_id,0, IPC_RMID);
     shmctl(shared_masterbook_id,0, IPC_RMID);
     shmctl(shared_users_id,0, IPC_RMID);
-    
+    shmctl(shared_masterbook_info_id, 0, IPC_RMID);
 }
 
+void remove_users(){
+    int i;
+    for( i = 0; i < SO_USERS_NUM; i++){
+        if(user[i].status == 1)
+            kill(user[i].pid, 9);
+    }
+}
+
+void remove_nodes(){
+    int i;
+    for( i = 0; i < SO_NODES_NUM; i++){
+        kill(nodes[i].pid, 9);
+    }
+}
+
+void stampa_utenti(){
+    int i;
+
+    for(i = 0; i < SO_USERS_NUM; i++){
+        printf("user:{ pid: %d, budget: %d, status: %d}\n", user[i].pid, user[i].budget, user[i].status);
+    }
+}
+
+void stampa_nodi(){
+    int i;
+    for( i = 0; i < SO_NODES_NUM; i++){
+        printf("node:{ pid: %d, budget: %d}", nodes[i].pid, nodes[i].budget);
+    }
+}

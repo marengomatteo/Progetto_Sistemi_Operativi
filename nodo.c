@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 
     /* Mi attacco alle memorie condivise */
     nodes = shmat(SH_NODES_ID, NULL, 0);
-
+    nodes[NODE_ID].budget=0;
     /* Mi attacco alle memorie condivise */
     masterbook = shmat(MASTERBOOK_ID, NULL, 0);
 
@@ -152,6 +152,7 @@ int main(int argc, char *argv[])
             printf("id blocco %d\n",transaction_block.id_block);
             if(transaction_block.id_block <= SO_REGISTRY_SIZE-1){
                 masterbook[transaction_block.id_block] = transaction_block;
+                nodes[NODE_ID].budget+= transaction_block.transaction_array[SO_BLOCK_SIZE-1].amount;
                 a_print(masterbook[transaction_block.id_block]);
             }
             if(semop(shd_masterbook_info->sem_masterbook, &sop_r,1) == -1){
