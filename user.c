@@ -38,11 +38,18 @@ int retry;
 int calculate_reward;
 int r_time;
 int last_block;
+int id_queue_message_rejected;
 
 struct Message {
     long mtype;      
     transaction trans;    
 } msg;
+
+struct rejected_message{
+    long mtype;
+    int amount;
+    pid_t receiver;
+} rejected_msg;
 
 int main(int argc, char *argv[])
 {
@@ -55,8 +62,10 @@ int main(int argc, char *argv[])
         perror("semaphore broke");
         exit(EXIT_FAILURE);
     }
+        printf("Finito utenti e nodi in  user\n");
 
-    /* Current Balance: calcolare TODO*/
+
+    /* Current Balance */
     curr_balance = SO_BUDGET_INIT;
 
     /*Mi aggancio alla memoria condivisa dei nodi*/
@@ -65,16 +74,15 @@ int main(int argc, char *argv[])
     /*Mi aggancio alla memoria condivisa degli utenti*/
     users = shmat(SH_USERS_ID, NULL, 0);
 
-    users[USER_ID].last_block_read = 0;
-    users[USER_ID].budget = curr_balance;
-    users[USER_ID].status = 1;
-
     /*Mi aggancio alla memoria condivisa del masterbook*/
     masterbook = shmat(MASTERBOOK_ID, NULL, 0);
 
     /* Mi attacco alle memorie condivisa del masterbook */
     shd_masterbook_info = shmat(MASTERBOOK_INFO_ID, NULL, 0);
    
+    /* Coda di messaggi per transazioni rifiutate */
+    id_queue_message_rejected = msgget(ID_QUEUE_MESSAGE_REJECTED, IPC_CREAT | 0600);
+
     /* Riservo la risorsa*/
     sop_p.sem_num = 0;
     sop_p.sem_op = -1;
@@ -82,6 +90,7 @@ int main(int argc, char *argv[])
     /* Rilascio la risorsa */
     sop_r.sem_num = 0;
     sop_r.sem_op = 1;
+
 
     srand(getpid());
 
@@ -104,41 +113,51 @@ int main(int argc, char *argv[])
                 printf("errore semaforo\n");
                 return -1;
             }
-            printf("riservo semaforo per lettura user: %d\n",getpid());
-            printf("leggo blocco %d\n",users[USER_ID].last_block_read );
+            /*printf("riservo semaforo per lettura user: %d\n",getpid());
+            printf("leggo blocco %d\n",users[USER_ID].last_block_read );*/
             for(index_transaction = 0; index_transaction < SO_BLOCK_SIZE; index_transaction++){
                 if(masterbook[users[USER_ID].last_block_read].transaction_array[index_transaction].receiver == getpid()){
                     curr_balance += masterbook[users[USER_ID].last_block_read].transaction_array[index_transaction].amount;
                 }
             }
 
+
             /* Rilascio il semaforo */
-            printf("rilascio semaforo per lettura user: %d current_balance: %d\n",getpid(),curr_balance);
+            /*printf("rilascio semaforo per lettura user: %d current_balance: %d\n",getpid(),curr_balance);*/
             if (semop(shd_masterbook_info->sem_masterbook, &sop_r, 1) == -1) {
                 printf("errore nel rilascio del semaforo\n");
                 return -1;
             }
+
+            while(msgrcv(id_queue_message_rejected, &rejected_msg, sizeof(struct rejected_message), getpid(), IPC_NOWAIT) > 0){
+
+                printf("transaction rejected user[%d]:{mtype: %ld, amount: %d, user receiver: %d}\n",getpid(), rejected_msg.mtype, rejected_msg.amount, rejected_msg.receiver);
+                
+                curr_balance = curr_balance + rejected_msg.amount;
+            }
             
             /* prendo il semaforo per aggiornare il bilancio*/
-            if(semop(SEM_MASTERBOOK_INFO_ID, &sop_p, 1) == -1){
+            if(semop(SEM_USERS_ID, &sop_p, 1) == -1){
                 perror("errore nel semaforo\n");
                 return -1;
             }
+           /* printf("riservo semaforo per SCRITTURA DATI user: %d\n",getpid());*/
        
             users[USER_ID].budget = curr_balance;
-        
+            users[USER_ID].last_block_read++;
+            /*printf("rilascio semaforo per SCRITTURA DATI user: %d\n",getpid());*/
+
             /* rilascio il semaforo*/
-            if(semop(SEM_MASTERBOOK_INFO_ID, &sop_r, 1) == -1){
+            if(semop(SEM_USERS_ID, &sop_r, 1) == -1){
                 perror("errore nel semaforo\n");
                 return -1;
             }
 
-            users[USER_ID].last_block_read++;
         }
 
         if(curr_balance >= 2){
 
-            printf("current balance prima: %d , dello user: %d\n", curr_balance, getpid());
+            /*printf("current balance prima: %d , dello user: %d\n", curr_balance, getpid());*/
 
             do{
                 index_ruser= rand() % SO_USERS_NUM;
@@ -165,9 +184,9 @@ int main(int argc, char *argv[])
             /* Variabile per ripetere la transazione in caso di fallimento*/
             retry = SO_RETRY;
 
-            #if DEBUG == 1
+            /*#if DEBUG == 1
                 printf("\ntransaction user pid: %d:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d}\n", getpid(),msg.trans.timestamp, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);
-            #endif
+            #endif*/
 
             while(retry >= 0){
                 if(msgsnd(nodes[index_rnode].id_mq,&msg,sizeof(struct Message),0) < 0) {
@@ -179,11 +198,14 @@ int main(int argc, char *argv[])
                     retry--;
                 }
                 else{
-                    printf("message send eseguita\n");
-                    curr_balance = curr_balance - msg.trans.amount - msg.trans.reward;
                     
+                    printf("\ntransaction user pid: %d:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d}\n", getpid(),msg.trans.timestamp, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);
+                    curr_balance = curr_balance - msg.trans.amount - msg.trans.reward;
+
+
+
                     /* prendo il semaforo per aggiornare il bilancio*/
-                    if(semop(SEM_MASTERBOOK_INFO_ID, &sop_p, 1) == -1){
+                    if(semop(SEM_USERS_ID, &sop_p, 1) == -1){
                         perror("errore nel semaforo\n");
                         return -1;
                     }
@@ -191,11 +213,11 @@ int main(int argc, char *argv[])
                     users[USER_ID].budget = curr_balance;
                 
                     /* rilascio il semaforo*/
-                    if(semop(SEM_MASTERBOOK_INFO_ID, &sop_r, 1) == -1){
+                    if(semop(SEM_USERS_ID, &sop_r, 1) == -1){
                         perror("errore nel semaforo\n");
                         return -1;
                     }
-
+                    
                     r_time = (rand()%(SO_MAX_TRANS_GEN_NSEC+1-SO_MIN_TRANS_GEN_NSEC))+SO_MIN_TRANS_GEN_NSEC;
                     timestamp.tv_nsec=r_time;
                     nanosleep(&timestamp, NULL);
@@ -207,6 +229,5 @@ int main(int argc, char *argv[])
             users[USER_ID].status = 0;
         }*/
 
-    
     }
 }

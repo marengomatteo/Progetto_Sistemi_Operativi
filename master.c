@@ -14,6 +14,7 @@
 #define SO_SIM_SEC atoi(getenv("SO_SIM_SEC"))
 #define SO_FRIENDS_NUM atoi(getenv("SO_FRIENDS_NUM"))
 #define SO_HOPS atoi(getenv("SO_HOPS"))
+#define SO_BUDGET_INIT atoi(getenv("SO_BUDGET_INIT"))
 
 /* Definizione variabili ausiliarie */
 #define NODE_NAME "nodo"
@@ -179,10 +180,20 @@ int main(int argc, char **argv, char **envp){
     genera_nodi(envp);
     genera_utenti(envp);
 
+    sops.sem_num = 0;
+    sops.sem_op = 0;
+    printf("Attendo utenti e nodi\n");
+    semop(sem_nodes_users_id, &sops, 1);
+    printf("Finito utenti e nodi\n");
+
+    while(1){
+        stampa_info();
+        sleep(1);
+    }
+      
+
     timestamp.tv_sec=1;
     while(1) {
-        stampa_utenti();
-        stampa_nodi();
         printf("manca un secondo in meno\n");
         nanosleep(&timestamp, NULL);
     };
@@ -201,12 +212,16 @@ void genera_nodi(char **envp)
         switch (fork())
         {
             case 0:
-                printf("\nCreato nodo %d\n", getpid());
-                sprintf(node_id, "%d", i);
+                /*printf("\nCreato nodo %d\n", getpid());
+                */
+               sprintf(node_id, "%d", i);
                 node_arguments[2] = node_id;
 
                 /*Inserisco dentro la memoria condivisa dei nodi il pid del nodo e l'id della coda di messaggi*/
                 nodes[i].pid = getpid();
+                nodes[i].budget=0;
+                nodes[i].status=1;
+
                 msgq_id = msgget(getpid(), 0600 | IPC_CREAT);
                 if(msgq_id == -1){
                     perror("errore sulla coda di messaggi");
@@ -241,12 +256,15 @@ void genera_utenti(char** envp)
         switch (fork())
         {
             case 0:
-                printf("\nCreato user %d\n", getpid());
+                /*printf("\nCreato user %d\n", getpid());*/
                 sprintf(user_id, "%d", i);
                 user_arguments[3] = user_id;
 
                 /*Inserisco dentro la memoria condivisa il pid dello user*/
                 user[i].pid=getpid();
+                user[i].last_block_read = 0;
+                user[i].budget = SO_BUDGET_INIT;
+                user[i].status = 1;
 
                 sops.sem_num = 0;
                 sops.sem_op = -1;
@@ -271,7 +289,6 @@ void sem_init(){
     semctl(sem_nodes_users_id, 0, SETVAL, SO_NODES_NUM+SO_USERS_NUM);
     semctl(sem_masterbook_id, 0, SETVAL, 1);
     semctl(shd_masterbook_info->sem_masterbook, 0, SETVAL, 1);
-    /* Inizializzare semaforo ad array di semafori*/
     semctl(sem_users_id, 0, SETVAL, 1);
 }
 
@@ -306,17 +323,55 @@ void remove_nodes(){
     }
 }
 
+void stampa_info(){
+    int i,user_alive=0, nodes_alive=0;
+    for(i=0; i<SO_USERS_NUM;i++){
+        if(user[i].status==1)user_alive++;
+    }
+    if(user_alive==0){
+        printf("User terminati--KILL");
+        /* kill(); */
+    }
+    for(i=0; i<SO_NODES_NUM;i++){
+        if(nodes[i].status==1)nodes_alive++;
+    }
+    printf("\nNODI ATTIVI: %d\tUSER ATTIVI: %d\n", nodes_alive,user_alive);
+    stampa_nodi();
+    stampa_utenti();
+}
 void stampa_utenti(){
     int i;
+    struct sembuf sop_p;
+    struct sembuf sop_r;
+
+    /* prendo la risorsa*/
+    sop_p.sem_num = 0;
+    sop_p.sem_op = -1;
+
+    /* rilascio la risorsa*/
+    sop_r.sem_num = 0;
+    sop_r.sem_op = 1;
 
     for(i = 0; i < SO_USERS_NUM; i++){
+        if(semop(sem_users_id, &sop_p, 1) == -1){
+            perror("errore nel semaforo\n");
+        }
+        /*printf("riservo semaforo per LETTURA DATI user: DA MASTER\n");*/
+
         printf("user:{ pid: %d, budget: %d, status: %d}\n", user[i].pid, user[i].budget, user[i].status);
+        /*printf("rilascio semaforo per LETTURA DATI user: DA MASTER\n");*/
+
+        if(semop(sem_users_id, &sop_r, 1) == -1){
+            perror("errore nel semaforo\n");
+        }
     }
+  
 }
 
 void stampa_nodi(){
     int i;
     for( i = 0; i < SO_NODES_NUM; i++){
-        printf("node:{ pid: %d, budget: %d}", nodes[i].pid, nodes[i].budget);
+        printf("node:{ pid: %d, budget: %d}\n", nodes[i].pid, nodes[i].budget);
     }
+       
 }

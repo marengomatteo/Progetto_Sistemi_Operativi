@@ -18,6 +18,7 @@
 
 #define SO_BLOCK_SIZE 3
 #define SO_REGISTRY_SIZE 1000
+#define ID_QUEUE_MESSAGE_REJECTED 20
 
 typedef struct _transaction {
   long timestamp;
@@ -32,7 +33,10 @@ typedef struct _node {
   struct _node *next;
 } node;
 
-typedef node *list;
+typedef struct _list{
+  node* head;
+  node* tail;
+}list;
 
 typedef struct _block{
   int id_block;
@@ -43,6 +47,7 @@ typedef struct _node_struct {
     int pid;
     int id_mq;
     int budget;
+    int status;
 } node_struct;
 
 typedef struct _user_struct{
@@ -64,11 +69,12 @@ void transaction_print (transaction d){
 }
 
 void l_print(list l){
+    node* tmp=l.head;
   	printf("\n-----lista transazioni:-----\n");
-	for ( ; l!=NULL ; l=l->next){
-    transaction_print(l->transaction);
+	for ( ; tmp!=NULL ; tmp=tmp->next){
+    transaction_print(tmp->transaction);
   }
-	  printf("-------");
+	  printf("\n-------\n");
 }
 
 void a_print(block l){
