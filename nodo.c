@@ -84,6 +84,10 @@ int main(int argc, char *argv[])
         /*Prelevo dalla coda SO_TP_SIZE-1 transazioni */
         while(msgrcv(nodes[NODE_ID].id_mq, &msg, sizeof(message), nodes[NODE_ID].pid,IPC_NOWAIT)>0){
 
+            #if DEBUG == 1
+                printf("\ntransaction nodo: %d:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d}\n", getpid(),msg.trans.timestamp, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);
+            #endif
+
             if(l_length(transaction_pool) >= SO_TP_SIZE){
                 
                 /* messaggio di transazione rifiutata, rispedito allo user che aggiornerà il suo bilancio */
