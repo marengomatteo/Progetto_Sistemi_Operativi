@@ -5,6 +5,7 @@ nell'unità di conversione*/
 
 #include "shared.h"
 
+int ipc_init();
 void sem_init();
 void remove_IPC();
 void genera_nodi(char ** envp);
@@ -16,3 +17,4 @@ void stampa_utenti();
 void stampa_nodi();
 void remove_nodes();
 void remove_users();
+void stampa_review_finale(int exit_reason);

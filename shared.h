@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <unistd.h>
+#include <math.h>
 #include <errno.h>
 #include <time.h>
 #include <signal.h>
@@ -14,7 +15,7 @@
 #include <sys/shm.h>
 #include <sys/msg.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define SO_BLOCK_SIZE 3
 #define SO_REGISTRY_SIZE 1000
@@ -48,6 +49,7 @@ typedef struct _node_struct {
     int id_mq;
     int budget;
     int status;
+    int tp_size;
 } node_struct;
 
 typedef struct _user_struct{
@@ -59,10 +61,20 @@ typedef struct _user_struct{
 
 typedef struct _masterbook_struct {
   int last_block_id;
-  int block_count;
+  int num_block;
   int sem_masterbook;
 } masterbook_struct;
 
+typedef struct _message {
+    long mtype;      
+    transaction trans;    
+} message;
+
+typedef struct _rejected_message{
+    long mtype;
+    int amount;
+    pid_t receiver;
+} rejected_message;
 
 void transaction_print (transaction d){
   printf("transaction:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d},\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
