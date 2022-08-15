@@ -32,6 +32,13 @@ list transaction_pool;
 rejected_message rejected_msg;
 message msg;
 
+/* ---------------------------
+|   Dichiarazione semafori   |
+----------------------------*/
+struct sembuf sops;
+struct sembuf sop_p; /* prende la risorsa*/
+struct sembuf sop_r; /* rilascia la risorsa */
+
 /* Variabili globali per il blocco */ 
 block transaction_block;
 int index_block = 0;
@@ -44,13 +51,6 @@ int main(int argc, char *argv[])
     int r_time;
     int id_queue_message_rejected;
     struct timespec timestamp;
-
-    /* ---------------------------
-    |   Dichiarazione semafori   |
-    ----------------------------*/
-    struct sembuf sops;
-    struct sembuf sop_p; /* prende la risorsa*/
-    struct sembuf sop_r; /* rilascia la risorsa */
 
     /* semop in attesa che tutti i nodi e gli utenti vengano creati*/
     sops.sem_num = 0;
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
             nanosleep(&timestamp, NULL);
 
             if(semop(shd_masterbook_info->sem_masterbook, &sop_p,1) == -1){
-                perror("errore nel semaforo\n");
+                perror("errore nel semaforo nodo\n");
                 return -1;
             }
             
