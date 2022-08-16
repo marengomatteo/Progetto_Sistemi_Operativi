@@ -17,9 +17,11 @@
 
 #define DEBUG 0
 
-#define SO_BLOCK_SIZE 3
+#define SO_BLOCK_SIZE 50
 #define SO_REGISTRY_SIZE 1000
 #define ID_QUEUE_MESSAGE_REJECTED 20
+
+#define SO_FRIENDS_NUM atoi(getenv("SO_FRIENDS_NUM"))
 
 typedef struct _transaction {
   long timestamp;
@@ -50,6 +52,7 @@ typedef struct _node_struct {
     int budget;
     int status;
     int tp_size;
+    int* friends;
 } node_struct;
 
 typedef struct _user_struct{

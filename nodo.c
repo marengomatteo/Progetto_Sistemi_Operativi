@@ -52,10 +52,6 @@ int main(int argc, char *argv[])
     int id_queue_message_rejected;
     struct timespec timestamp;
 
-    /* semop in attesa che tutti i nodi e gli utenti vengano creati*/
-    sops.sem_num = 0;
-    sops.sem_op = 0;
-    semop(SH_SEM_ID, &sops, 1);
 
     /* Mi attacco alle memorie condivise */
     nodes = shmat(SH_NODES_ID, NULL, 0);

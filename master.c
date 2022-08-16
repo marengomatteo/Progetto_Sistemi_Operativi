@@ -12,10 +12,12 @@
 #define SO_MIN_TRANS_PROC_NSEC atoi(getenv("SO_MIN_TRANS_PROC_NSEC"))
 #define SO_MAX_TRANS_PROC_NSEC atoi(getenv("SO_MAX_TRANS_PROC_NSEC"))
 #define SO_SIM_SEC atoi(getenv("SO_SIM_SEC"))
-#define SO_FRIENDS_NUM atoi(getenv("SO_FRIENDS_NUM"))
 #define SO_HOPS atoi(getenv("SO_HOPS"))
 #define SO_BUDGET_INIT atoi(getenv("SO_BUDGET_INIT"))
+#define SO_NUM_FRIENDS atoi(getenv("SO_NUM_FRIENDS"))
+
 #define MAX_PROC_PRINTABLE 10
+
 /* Definizione variabili ausiliarie */
 #define NODE_NAME "nodo"
 #define USER_NAME "user"
@@ -27,6 +29,8 @@ int sem_masterbook_id;
 
 struct sembuf sops;
 
+struct sembuf sop_p;
+struct sembuf sop_r;
 /* Array per tener traccia delle risorse create SHAREDMEMORY */
 int shared_nodes_id; /* id memoria condivisa dei nodi*/
 int shared_masterbook_id; /* id mlibro mastro*/
@@ -61,6 +65,7 @@ void sig_handler(int signum){
 
 int main(int argc, char **argv, char **envp){
 
+
     char id_argument_sm_nodes[3 * sizeof(int) + 1]; /*id memoria condivisa nodi*/
     char id_argument_sm_users[3 * sizeof(int) + 1]; /*id memoria condivisa user*/
     char id_argument_sm_masterbook[3 * sizeof(int) + 1]; /*id memoria condivisa master book*/
@@ -71,7 +76,7 @@ int main(int argc, char **argv, char **envp){
     char id_argument_sem_masterbook_id[3 * sizeof(int) + 1]; /*id semaforo per scrivere e leggere su masterbook*/
 
     struct timespec* time;
-    
+
     if (signal(SIGALRM, sig_handler)==SIG_ERR) {
         printf("\nErrore della disposizione dell'handler\n");
         exit(EXIT_FAILURE);
@@ -90,7 +95,7 @@ int main(int argc, char **argv, char **envp){
         exit(EXIT_FAILURE);
     }
    
-    alarm(10);
+    alarm(20);
 
     /* init memorie condivise */
     if(ipc_init() < 0){
@@ -99,6 +104,12 @@ int main(int argc, char **argv, char **envp){
 
     /* Inizializzazione semafori */
     sem_init();
+    sop_p.sem_num=0;
+    sop_p.sem_op=-1;
+
+    sop_r.sem_num=0;
+    sop_r.sem_op=1;
+    
 
     /* Converte da int a char gli id delle memorie condivise */
     sprintf(id_argument_sm_nodes, "%d", shared_nodes_id);
@@ -230,7 +241,7 @@ int ipc_init(){
 void genera_nodi(char **envp)
 {
     char node_id[3 * sizeof(int) + 1];
-    int i;
+    int i,j;
     int msgq_id;
    
     for (i = 0; i < SO_NODES_NUM; i++)
@@ -240,7 +251,7 @@ void genera_nodi(char **envp)
             case 0:
                 /*printf("\nCreato nodo %d\n", getpid());
                 */
-               sprintf(node_id, "%d", i);
+                sprintf(node_id, "%d", i);
                 node_arguments[2] = node_id;
 
                 /*Inserisco dentro la memoria condivisa dei nodi il pid del nodo e l'id della coda di messaggi*/
@@ -259,6 +270,18 @@ void genera_nodi(char **envp)
                 sops.sem_op = -1;
                 sops.sem_flg = 0;
                 semop(sem_nodes_users_id, &sops, 1);
+
+                /* semop in attesa che tutti i nodi e gli utenti vengano creati*/
+                printf("Attendo tutti i nodi e utenti\n");
+                sops.sem_op = 0;
+                sops.sem_num = 0;
+                semop(sem_nodes_users_id, &sops, 1);
+                printf("Creo amici\n");
+                nodes[i].friends = get_friends(getpid());
+                printf("sono in for\n");
+                for( j=0; j<SO_NUM_FRIENDS;j++){
+                    printf("Amico %d: %d\n", j, nodes[i].friends[j]);
+                }
                 /* INSTANZIARE CON EXECVE IL NODO, Passare parametri */
                 if (execve(NODE_NAME, node_arguments, envp) == -1){
                     perror("Could not execve");
@@ -350,9 +373,16 @@ void remove_nodes(){
 }
 
 void stampa_info(){
-    int i;
+    int i,j;
+
     for(i=0; i<SO_USERS_NUM;i++){
+        if(semop(sem_users_id, &sop_p, 1) == -1){
+            perror("errore nel semaforo preso per lettura user da master\n");
+        }
         if(user[i].status==0)user_dead++;
+        if(semop(sem_users_id, &sop_r, 1) == -1){
+            perror("errore nel semaforo preso per lettura user da master\n");
+        }
     }
     if(user_dead==SO_USERS_NUM){
         #if DEBUG == 1
@@ -364,15 +394,53 @@ void stampa_info(){
     for(i=0; i<SO_NODES_NUM;i++){
         if(nodes[i].status==0)nodes_dead++;
     }
+
     printf("\nNODI ATTIVI: %d\tUSER ATTIVI: %d\n", SO_NODES_NUM-nodes_dead,SO_USERS_NUM - user_dead);
-    if(SO_USERS_NUM+SO_NODES_NUM>MAX_PROC_PRINTABLE){
-        /* vedere come hanno fatto gli altri*/
+    
+    if(SO_USERS_NUM > MAX_PROC_PRINTABLE){
+        print_min_max_budget_user();
     }else{
-        stampa_nodi();
         stampa_utenti();
     }
+    
+    stampa_nodi();
     user_dead=0;
     nodes_dead=0;
+}
+
+void print_min_max_budget_user(){
+    int i,j;
+    user_struct* user_copy;
+    user_struct tmp;
+    user_copy = malloc(SO_USERS_NUM*sizeof(user_struct));
+
+    for(i = 0; i<SO_USERS_NUM; i++){
+        user_copy[i]=user[i];
+    }
+
+    for (i = 0; i < SO_USERS_NUM; ++i){
+        for (j = i + 1; j < SO_USERS_NUM; ++j)
+        {
+            if (user_copy[i].budget > user_copy[j].budget) 
+            {
+                tmp =  user_copy[i];
+                user_copy[i] = user_copy[j];
+                user_copy[j] = tmp;
+            }
+        }
+    }            
+    
+    printf("---------------%d MAX BUDGET-------------\n", MAX_PROC_PRINTABLE/2);
+    for(i=SO_USERS_NUM-1; i>SO_USERS_NUM-(MAX_PROC_PRINTABLE/2)-1;i--){
+        printf("User %d budget: %d\n", i, user_copy[i].budget);
+    }
+    printf("---------------%d MIN BUDGET-------------\n", MAX_PROC_PRINTABLE/2);
+    for(i=0; i<MAX_PROC_PRINTABLE/2;i++){
+        printf("User %d budget: %d\n", i, user_copy[i].budget);
+    }
+
+    free(user_copy);
+
 }
 
 void stampa_utenti(){
@@ -406,6 +474,8 @@ void stampa_utenti(){
 
 void stampa_nodi(){
     int i;
+    printf("---------------NODI---------------\n");
+
     for( i = 0; i < SO_NODES_NUM; i++){
         printf("node:{ pid: %d, budget: %d}\n", nodes[i].pid, nodes[i].budget);
     }
@@ -457,4 +527,39 @@ void stampa_review_finale(int exit_reason){
     remove_IPC();
     printf("----------------MASTER TERMINA----------------\n");
     exit(EXIT_SUCCESS);
+}
+
+int* get_friends(int pid_me){
+       
+    int* f;
+    int i, r_index, flag, j;
+
+    f = (int *)malloc(sizeof(int)*SO_NUM_FRIENDS); 
+    
+    for(i=0; i < SO_NUM_FRIENDS; i++){
+        
+        flag=0;
+
+        do{
+            /*da rivedere e togliere la printf fratm*/
+            r_index = get_r_pid();
+          
+            if(nodes[r_index].pid == pid_me) flag = 1;
+
+            for(j=0; j<i; j++){
+                if(f[j] == r_index) flag = 1;
+            }
+            
+        }while(flag == 1);
+
+        f[i]=nodes[r_index].pid;
+    }
+    
+    printf("[NODO %d] {amico 1: %d, amico2: %d}\n",pid_me,f[0], f[1]);
+
+    return f;
+}
+
+int get_r_pid(){            
+    return rand() % SO_NODES_NUM;
 }
