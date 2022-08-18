@@ -149,7 +149,6 @@ void send_transaction(){
             
         /* indice random per prendere un nodo a cui inviare la transazione da processare*/
         index_rnode= rand() % SO_NODES_NUM;
-
         msg.mtype = nodes[index_rnode].pid;
         msg.trans = build_transaction(SO_USERS_NUM, user_id, SO_REWARD);
 
@@ -211,7 +210,7 @@ void update_budget( int so_block_size){
         #endif
 
         if(semop(shd_masterbook_info->sem_masterbook, &sop_p, 1) == -1) {
-            printf("errore semaforo\n");
+            printf("errore semaforo user\n");
         }
         
         for(index_transaction = 0; index_transaction < SO_BLOCK_SIZE; index_transaction++){

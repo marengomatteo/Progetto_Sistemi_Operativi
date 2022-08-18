@@ -17,11 +17,12 @@
 
 #define DEBUG 0
 
-#define SO_BLOCK_SIZE 50
+#define SO_BLOCK_SIZE 3
 #define SO_REGISTRY_SIZE 1000
 #define ID_QUEUE_MESSAGE_REJECTED 20
+#define ID_QUEUE_FRIENDS 40
 
-#define SO_FRIENDS_NUM atoi(getenv("SO_FRIENDS_NUM"))
+#define SO_NUM_FRIENDS atoi(getenv("SO_NUM_FRIENDS"))
 
 typedef struct _transaction {
   long timestamp;
@@ -52,7 +53,6 @@ typedef struct _node_struct {
     int budget;
     int status;
     int tp_size;
-    int* friends;
 } node_struct;
 
 typedef struct _user_struct{
@@ -73,12 +73,22 @@ typedef struct _message {
     transaction trans;    
 } message;
 
+typedef struct _message_f {
+    long mtype;
+    transaction trans; 
+    int hops;   
+} message_f;
+
 typedef struct _rejected_message{
     long mtype;
     int amount;
     pid_t receiver;
 } rejected_message;
 
+typedef struct _message_id_f{
+    long mtype;
+    int friend;
+}message_id_f;
 void transaction_print (transaction d){
   printf("transaction:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d},\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
 }

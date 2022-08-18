@@ -18,5 +18,5 @@ void stampa_nodi();
 void remove_nodes();
 void remove_users();
 void stampa_review_finale(int exit_reason);
-int* get_friends();
+void get_friends(int nodes_id);
 void print_min_max_budget_user();

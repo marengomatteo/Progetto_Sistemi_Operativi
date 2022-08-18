@@ -45,7 +45,7 @@ block *master_book;
 user_struct *user;
 masterbook_struct* shd_masterbook_info;
 int shared_masterbook_info_id;
-
+int id_queue_friends;
 int exitReason=2, user_dead=0, nodes_dead=0;
 void sig_handler(int signum){
    switch(signum){
@@ -65,7 +65,8 @@ void sig_handler(int signum){
 
 int main(int argc, char **argv, char **envp){
 
-
+    int i, num_nodi;
+    message_f msg_friend;
     char id_argument_sm_nodes[3 * sizeof(int) + 1]; /*id memoria condivisa nodi*/
     char id_argument_sm_users[3 * sizeof(int) + 1]; /*id memoria condivisa user*/
     char id_argument_sm_masterbook[3 * sizeof(int) + 1]; /*id memoria condivisa master book*/
@@ -91,6 +92,8 @@ int main(int argc, char **argv, char **envp){
     }
 
     if(SO_TP_SIZE <= SO_BLOCK_SIZE) {
+       /*printf("so_tp_size %d\n", SO_TP_SIZE);
+        printf("so_B_size %d\n", SO_BLOCK_SIZE); */
         printf("Parametri errati\n");
         exit(EXIT_FAILURE);
     }
@@ -110,6 +113,11 @@ int main(int argc, char **argv, char **envp){
     sop_r.sem_num=0;
     sop_r.sem_op=1;
     
+    /*Creo coda di messaggi amici*/
+    id_queue_friends = msgget(ID_QUEUE_FRIENDS,IPC_CREAT | 0600);
+
+
+    num_nodi=SO_NODES_NUM;
 
     /* Converte da int a char gli id delle memorie condivise */
     sprintf(id_argument_sm_nodes, "%d", shared_nodes_id);
@@ -143,7 +151,7 @@ int main(int argc, char **argv, char **envp){
         printf("memoria condivisa nodes: %d\n", shared_nodes_id);
     #endif
 
-    genera_nodi(envp);
+    genera_nodi(envp, SO_NODES_NUM);
     genera_utenti(envp);
 
     
@@ -151,8 +159,17 @@ int main(int argc, char **argv, char **envp){
     sops.sem_op = 0;
     
     semop(sem_nodes_users_id, &sops, 1);
+    for(i=0; i<SO_NODES_NUM;i++)
+        get_friends(i);
 
     while(1){
+        /* controllo se ci sono messaggi dei nodi per il master */
+        while(msgrcv(id_queue_friends, &msg_friend, sizeof(message_f), getpid(),IPC_NOWAIT)>0){
+            /* creo nuovo nodo */
+            genera_nodi(envp, 1);
+            num_nodi++;
+            get_friends(num_nodi-1);
+        }
         stampa_info();
         sleep(1);
     }
@@ -237,14 +254,13 @@ int ipc_init(){
     }
 }
 
-
-void genera_nodi(char **envp)
+void genera_nodi(char **envp, int num_nodi)
 {
     char node_id[3 * sizeof(int) + 1];
     int i,j;
     int msgq_id;
    
-    for (i = 0; i < SO_NODES_NUM; i++)
+    for (i = 0; i < num_nodi; i++)
     {
         switch (fork())
         {
@@ -253,19 +269,18 @@ void genera_nodi(char **envp)
                 */
                 sprintf(node_id, "%d", i);
                 node_arguments[2] = node_id;
-
                 /*Inserisco dentro la memoria condivisa dei nodi il pid del nodo e l'id della coda di messaggi*/
                 nodes[i].pid = getpid();
                 nodes[i].budget=0;
                 nodes[i].status=1;
                 nodes[i].tp_size=0;
+
                 msgq_id = msgget(getpid(), 0600 | IPC_CREAT);
                 if(msgq_id == -1){
                     perror("errore sulla coda di messaggi");
                     exit(EXIT_FAILURE);
                 }
                 nodes[i].id_mq = msgq_id;
-
                 sops.sem_num = 0;
                 sops.sem_op = -1;
                 sops.sem_flg = 0;
@@ -276,12 +291,6 @@ void genera_nodi(char **envp)
                 sops.sem_op = 0;
                 sops.sem_num = 0;
                 semop(sem_nodes_users_id, &sops, 1);
-                printf("Creo amici\n");
-                nodes[i].friends = get_friends(getpid());
-                printf("sono in for\n");
-                for( j=0; j<SO_NUM_FRIENDS;j++){
-                    printf("Amico %d: %d\n", j, nodes[i].friends[j]);
-                }
                 /* INSTANZIARE CON EXECVE IL NODO, Passare parametri */
                 if (execve(NODE_NAME, node_arguments, envp) == -1){
                     perror("Could not execve");
@@ -319,7 +328,7 @@ void genera_utenti(char** envp)
                 sops.sem_op = -1;
                 sops.sem_flg = 0;
                 if(semop(sem_nodes_users_id, &sops, 1)<0){
-                    printf("Errore semaforo\n");
+                    printf("Errore semaforo sem nodes users\n");
                 }
                
                 if (execve(USER_NAME, user_arguments, envp) == -1){
@@ -529,37 +538,35 @@ void stampa_review_finale(int exit_reason){
     exit(EXIT_SUCCESS);
 }
 
-int* get_friends(int pid_me){
+void get_friends(int node_id){
        
     int* f;
     int i, r_index, flag, j;
+    message_id_f msg_id_friends;
 
-    f = (int *)malloc(sizeof(int)*SO_NUM_FRIENDS); 
+    f = (int*) malloc(sizeof(int)*SO_NUM_FRIENDS); 
     
     for(i=0; i < SO_NUM_FRIENDS; i++){
-        
-        flag=0;
-
         do{
-            /*da rivedere e togliere la printf fratm*/
+            flag=0;
             r_index = get_r_pid();
-          
-            if(nodes[r_index].pid == pid_me) flag = 1;
+            if(nodes[r_index].pid == nodes[node_id].pid) flag = 1;
 
-            for(j=0; j<i; j++){
-                if(f[j] == r_index) flag = 1;
+            for(j=0; j<i && flag==0; j++){
+                if(f[j] == nodes[r_index].pid) flag = 1;
             }
             
         }while(flag == 1);
-
         f[i]=nodes[r_index].pid;
+        msg_id_friends.mtype=nodes[node_id].pid;
+        msg_id_friends.friend=f[i];
+        if(msgsnd(id_queue_friends,&msg_id_friends,sizeof(message_id_f),0) < 0){
+            printf("errore nella message send ad un amico");
+        }
     }
-    
-    printf("[NODO %d] {amico 1: %d, amico2: %d}\n",pid_me,f[0], f[1]);
-
-    return f;
 }
 
-int get_r_pid(){            
+int get_r_pid(){
+    srand(clock());
     return rand() % SO_NODES_NUM;
 }

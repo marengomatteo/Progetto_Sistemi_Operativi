@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "stddef.h": "c",
+        "sem.h": "c",
+        "user.h": "c",
+        "nodo.h": "c",
+        "master.h": "c",
+        "shared.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
+}

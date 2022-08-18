@@ -16,6 +16,7 @@
 #define SO_MIN_TRANS_GEN_NSEC atoi(getenv("SO_MIN_TRANS_GEN_NSEC"))
 #define SO_MAX_TRANS_GEN_NSEC atoi(getenv("SO_MAX_TRANS_GEN_NSEC"))
 #define SO_TP_SIZE atoi(getenv("SO_TP_SIZE"))
+#define SO_HOPS atoi(getenv("SO_HOPS"))
 
 /*Semaforo per segnalare che i nodi sono pronti*/
 #define ID_READY 0;
@@ -31,7 +32,9 @@ block* masterbook;
 list transaction_pool;
 rejected_message rejected_msg;
 message msg;
-
+message_f msg_friend;
+message_id_f msg_id_f;
+int* friends;
 /* ---------------------------
 |   Dichiarazione semafori   |
 ----------------------------*/
@@ -48,11 +51,13 @@ int main(int argc, char *argv[])
     /* ---------------------------
     |   Dichiarazione variabili  |
     ----------------------------*/
-    int r_time;
+    int r_time, r_friend;
     int id_queue_message_rejected;
+    int id_queue_friends;
     struct timespec timestamp;
+    int j,i;
 
-
+    friends=malloc(sizeof(int)*SO_NUM_FRIENDS);
     /* Mi attacco alle memorie condivise */
     nodes = shmat(SH_NODES_ID, NULL, 0);
 
@@ -65,6 +70,21 @@ int main(int argc, char *argv[])
     /* Coda di messaggi per le transazoni rifiutate */
     id_queue_message_rejected = msgget(ID_QUEUE_MESSAGE_REJECTED,IPC_CREAT | 0600);
 
+    /*Creo coda di messaggi amici*/
+    id_queue_friends = msgget(ID_QUEUE_FRIENDS,IPC_CREAT | 0600);
+
+    for(i=0; i<SO_NUM_FRIENDS;i++){
+        if(msgrcv(id_queue_friends, &msg_id_f, sizeof(message_id_f), nodes[NODE_ID].pid,0)>0){
+            friends[i]=msg_id_f.friend;
+        }else{
+            printf("errore ricezione messaggio amico\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    
+    for(i = 0; i < SO_NUM_FRIENDS; i++){
+        printf("[NODO %d] amico %d: %d\n", getpid(), i, friends[i]);
+    }
     clock_gettime(CLOCK_REALTIME, &timestamp);
    
     /* Riservo la risorsa*/
@@ -79,20 +99,32 @@ int main(int argc, char *argv[])
 
         /*Prelevo dalla coda SO_TP_SIZE-1 transazioni */
         while(msgrcv(nodes[NODE_ID].id_mq, &msg, sizeof(message), nodes[NODE_ID].pid,IPC_NOWAIT)>0){
-
             #if DEBUG == 1
                 printf("\ntransaction nodo: %d:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d}\n", getpid(),msg.trans.timestamp, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);
             #endif
 
+            /* TODO guardare perchè >*/
             if(l_length(transaction_pool) >= SO_TP_SIZE){
-                
-                /* messaggio di transazione rifiutata, rispedito allo user che aggiornerà il suo bilancio */
+                printf("transaction pool piena linea 108\n");
+                /* PARTE DA 24 */
+                /* messaggio di transazione rifiutata, rispedito allo user che aggiornerà il suo bilancio 
                 rejected_msg.mtype = msg.trans.sender;
                 rejected_msg.amount = msg.trans.amount + msg.trans.reward;
                 rejected_msg.receiver = msg.trans.sender;
 
                 if(msgsnd(id_queue_message_rejected,&rejected_msg,sizeof(rejected_message),0) < 0){
                     printf("errore nella message send");
+                    return -1;
+                }*/
+
+                /* PARTA DA 30 */
+                /*scelgo amico random*/
+                r_friend = rand() % SO_NUM_FRIENDS;
+                msg_friend.mtype = friends[r_friend];
+                msg_friend.trans = msg.trans;
+                msg_friend.hops = 0;
+                if(msgsnd(id_queue_friends,&msg_friend,sizeof(message_f),0) < 0){
+                    printf("errore nella message send ad un amico");
                     return -1;
                 }
             }
@@ -105,7 +137,52 @@ int main(int argc, char *argv[])
             }
 
         }
+        /* ricevo messaggi da amici */
+        while(msgrcv(id_queue_friends, &msg_friend, sizeof(message_f), nodes[NODE_ID].pid,IPC_NOWAIT)>0){
 
+            if(l_length(transaction_pool) >= SO_TP_SIZE && msg_friend.hops < SO_HOPS){
+                printf("transaction pool piena linea 150\n");
+                r_friend = rand() % SO_NUM_FRIENDS;
+                msg_friend.mtype = friends[r_friend];
+                msg_friend.hops++;
+
+                if(msgsnd(id_queue_friends,&msg_friend,sizeof(message_f),0) < 0){
+                    printf("errore nella message send ad un amico");
+                    return -1;
+                }
+            }else if(l_length(transaction_pool) >= SO_TP_SIZE && msg_friend.hops == SO_HOPS){
+                msg_friend.mtype = getppid();
+                if(msgsnd(id_queue_friends,&msg_friend,sizeof(message_f),0) < 0){
+                    printf("errore nella message send a master");
+                    return -1;
+                }
+            }
+            else{
+                l_add_transaction(msg_friend.trans,&transaction_pool);
+                nodes[NODE_ID].tp_size++;
+
+            }
+        }
+
+        /* Invio una transaction ad un amico */
+        if(l_length(transaction_pool)>0){
+
+            /*scelgo amico random*/
+            r_friend = rand() % SO_NUM_FRIENDS;
+            /* creo messaggio */
+            msg_friend.mtype = friends[r_friend];
+            msg_friend.trans = transaction_pool.head->transaction;
+            msg_friend.hops = 0;
+
+            if(msgsnd(id_queue_friends,&msg_friend,sizeof(message_f),0) < 0){
+                    printf("errore nella message send ad un amico");
+                    return -1;
+            }
+            transaction_pool.head = transaction_pool.head->next;
+            if(transaction_pool.head == NULL) 
+                transaction_pool.tail = NULL;
+            nodes[NODE_ID].tp_size--;
+        }
         /* Creo un nuovo blocco*/
         build_block(NODE_ID);
                  
@@ -115,9 +192,11 @@ int main(int argc, char *argv[])
             transaction_block.transaction_array[index_block] = create_reward_transaction(timestamp.tv_nsec,REWARD_SENDER,getpid(), block_reward,0);
             block_reward = 0;
             index_block = 0;
-
+            /*Devo usare clock() perchè succede tutto in nanosecondi e time() rileva i secondi*/
             /* simulo attesa per processare il blocco */
             r_time = (rand()%(SO_MAX_TRANS_GEN_NSEC+1-SO_MIN_TRANS_GEN_NSEC))+SO_MIN_TRANS_GEN_NSEC;
+            /*printf("random time di %d: %d\n", getpid(), r_time);*/
+
             timestamp.tv_nsec = r_time;
             nanosleep(&timestamp, NULL);
 
