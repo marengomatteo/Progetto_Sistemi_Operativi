@@ -26,7 +26,8 @@
 #define SO_NUM_FRIENDS atoi(getenv("SO_NUM_FRIENDS"))
 
 typedef struct _transaction {
-  long timestamp;
+  long timestamp_sec;
+  long timestamp_nsec;
   pid_t sender;
   pid_t receiver;
   int amount;

@@ -151,7 +151,7 @@ void send_transaction(){
         msg.trans = build_transaction();
 
         #if DEBUG == 1
-            printf("\ntransaction user pid: %d:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d}\n", getpid(),msg.trans.timestamp, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);
+            printf("\ntransaction user pid: %d:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d}\n", getpid(),msg.trans.timestamp_sec, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);
         #endif
 
         for(i=0; i<retry; i++){
@@ -161,7 +161,7 @@ void send_transaction(){
             else{
 
                 /*printf("user %d fine\n", getpid());
-                printf("\ntransaction user pid: %d:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d}\n", getpid(),msg.trans.timestamp, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);*/
+                printf("\ntransaction user pid: %d:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d}\n", getpid(),msg.trans.timestamp_sec, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);*/
              
                 curr_balance = curr_balance - msg.trans.amount - msg.trans.reward;
                 /* printf("[USER %d] curr balance %d\n", getpid(), curr_balance);*/
@@ -267,15 +267,16 @@ transaction build_transaction(){
         clock_gettime(CLOCK_REALTIME, &timestamp);
 
         /* Creo la transazione da spedire */
-        t.timestamp = timestamp.tv_nsec;
+        t.timestamp_nsec = timestamp.tv_nsec;
+        t.timestamp_sec = timestamp.tv_sec;
         t.sender = getpid();
         t.receiver = users[index_ruser].pid;
         t.reward = calculate_reward;
         t.amount = r_number-calculate_reward;
 
-        #if DEBUG == 1
-            printf("\ntransaction user pid: %d:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d}\n", getpid(),t.timestamp, t.sender, t.receiver, t.amount, t.reward);
+        #if DEBUG==1
+        printf("\ntransaction user pid: %d:{timestamp: nsec: %ld sec: %ld,sender: %d,receiver: %d,amount: %d,reward: %d}\n", getpid(),t.timestamp_nsec, t.timestamp_sec, t.sender, t.receiver, t.amount, t.reward);
         #endif
-
+        
         return t;
 }

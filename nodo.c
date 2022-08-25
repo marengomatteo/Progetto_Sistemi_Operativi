@@ -130,10 +130,9 @@ int main(int argc, char *argv[])
         while(msgrcv(nodes[NODE_ID].id_mq, &msg, sizeof(message), getpid(),IPC_NOWAIT)>0){
             #if DEBUG == 1
                 printf("ricevo mex nodo %d\n", getpid());
-            
                 printf("[NODO %d] ricevo transazione\n", getpid());
+                printf("\ntransaction nodo: %d:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d}\n", getpid(),msg.trans.timestamp_nsec, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);
             
-                printf("\ntransaction nodo: %d:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d}\n", getpid(),msg.trans.timestamp, msg.trans.sender, msg.trans.receiver, msg.trans.amount, msg.trans.reward);
             #endif
            
             if(nodes[NODE_ID].tp_size == SO_TP_SIZE){
@@ -157,7 +156,7 @@ int main(int argc, char *argv[])
                 msg_friend.hops = 0;
 
                 #if DEBUG == 1
-                    printf("[NODO %d] to: %d timestamp: %ld\n", getpid(), friends[r_friend], msg_friend.trans.timestamp);
+                    printf("[NODO %d] to: %d timestamp: %ld\n", getpid(), friends[r_friend], msg_friend.trans.timestamp_nsec);
                 #endif
 
                 if(msgsnd(id_queue_friends,&msg_friend,sizeof(message_f),0) < 0){
@@ -205,7 +204,7 @@ int main(int argc, char *argv[])
                     r_friend = rand() % num_friends;
                     msg_friend.mtype = friends[r_friend];
                     msg_friend.hops = msg_friend.hops++;
-                    /*printf("[LINEA 194 NODO %d] msg_friend type %ld: { hops: %d, sender: %d, receiver: %d, timestamp %ld }\n", getpid(),msg_friend.mtype, msg_friend.hops, msg_friend.trans.sender, msg_friend.trans.receiver, msg_friend.trans.timestamp);*/
+                    /*printf("[LINEA 194 NODO %d] msg_friend type %ld: { hops: %d, sender: %d, receiver: %d, timestamp %ld }\n", getpid(),msg_friend.mtype, msg_friend.hops, msg_friend.trans.sender, msg_friend.trans.receiver, msg_friend.trans.timestamp_nsec);*/
 
                     if(msgsnd(id_queue_friends,&msg_friend,sizeof(message_f),0) < 0){
                         perror("errore nella message send ad un amico mex ricevuto da amico\n");
@@ -214,7 +213,7 @@ int main(int argc, char *argv[])
                 }
                 else {
                     msg_friend.mtype = getppid();
-                    /*printf("[LINEA 204 NODO %d] msg_friend type %ld: { hops: %d, sender: %d, receiver: %d, timestamp %ld }\n", getpid(),msg_friend.mtype, msg_friend.hops, msg_friend.trans.sender, msg_friend.trans.receiver, msg_friend.trans.timestamp);*/
+                    /*printf("[LINEA 204 NODO %d] msg_friend type %ld: { hops: %d, sender: %d, receiver: %d, timestamp %ld }\n", getpid(),msg_friend.mtype, msg_friend.hops, msg_friend.trans.sender, msg_friend.trans.receiver, msg_friend.trans.timestamp_nsec);*/
                     if(msgsnd(id_queue_friends,&msg_friend,sizeof(message_f),0) < 0){
                         printf("errore nella message send a master");
                         return -1;
@@ -281,7 +280,7 @@ int main(int argc, char *argv[])
 
                 /*Creo la transazione di reward e la aggiungo */
                 clock_gettime(CLOCK_REALTIME, &timestamp);
-                transaction_block.transaction_array[index_block] = create_reward_transaction(timestamp.tv_nsec,REWARD_SENDER,getpid(), block_reward,0);
+                transaction_block.transaction_array[index_block] = create_reward_transaction(timestamp.tv_nsec, timestamp.tv_sec,REWARD_SENDER,getpid(), block_reward,0);
                 block_reward = 0;
                 index_block = 0;
 
@@ -338,9 +337,10 @@ int main(int argc, char *argv[])
 
 }
 
-transaction create_reward_transaction(long timestamp, int sender, int receiver, int amount, int reward){
+transaction create_reward_transaction(long timestamp_nsec, long timestamp_sec, int sender, int receiver, int amount, int reward){
     transaction* d = malloc(sizeof(transaction));
-    d->timestamp = timestamp;
+    d->timestamp_nsec = timestamp_nsec;
+    d->timestamp_sec = timestamp_sec;  
     d->sender = sender;
     d->receiver = receiver;
     d->amount = amount;
