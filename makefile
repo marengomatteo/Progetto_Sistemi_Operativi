@@ -1,5 +1,4 @@
 export CC="gcc"
-export CFLAGS= "-std=c89 -pedantic"
 
 #Variabili 
 export SO_USERS_NUM=100
