@@ -41,13 +41,15 @@ char *user_arguments[8] = {USER_NAME};
 
 struct timespec timestamp;
 node_struct *nodes;
-block *master_book;
 user_struct *user;
 masterbook_struct* shd_masterbook_info;
 int shared_masterbook_info_id;
-int id_queue_friends,id_queue_pid_friends;
+int id_queue_friends;
+int id_queue_pid_friends;
+/* PARTE DA 24
+int id_queue_message_rejected;*/
 int num_max_nodes;
-int exitReason=2, user_dead=0, nodes_dead=0;
+int exitReason=2, user_dead=0;
 message_id_f *msg_id_friends;
 
 void sig_handler(int signum){
@@ -84,9 +86,6 @@ int main(int argc, char **argv, char **envp){
     char id_argument_sem_users_id[3*sizeof(int)+1]; /*id semaforo per user*/
     char id_argument_sem_masterbook_id[3 * sizeof(int) + 1]; /*id semaforo per scrivere e leggere su masterbook*/
 
-    struct timespec* time;
-
-    int flag=0;
     if (signal(SIGALRM, sig_handler)==SIG_ERR) {
         printf("\nErrore della disposizione dell'handler\n");
         exit(EXIT_FAILURE);
@@ -105,8 +104,6 @@ int main(int argc, char **argv, char **envp){
     }
 
     if(SO_TP_SIZE <= SO_BLOCK_SIZE) {
-        /* printf("so_tp_size %d\n", SO_TP_SIZE);
-        printf("so_B_size %d\n", SO_BLOCK_SIZE);*/ 
         printf("Parametri errati inserire SO_TP_SIZE maggiore di SO_BLOCK_SIZE\n");
         exit(EXIT_FAILURE);
     }
@@ -117,6 +114,7 @@ int main(int argc, char **argv, char **envp){
     msg_id_friends = (message_id_f*)malloc(sizeof(message_id_f));
 
     num_max_nodes= SO_NODES_NUM*2;
+
     /* init memorie condivise */
     if(ipc_init() < 0){
         exit(EXIT_FAILURE);
@@ -130,13 +128,6 @@ int main(int argc, char **argv, char **envp){
     sop_r.sem_num=0;
     sop_r.sem_op=1;
     
-    /*Creo coda di messaggi amici*/
-    id_queue_friends = msgget(ID_QUEUE_FRIENDS,IPC_CREAT | 0600);
-
-    /*Creo coda di messaggi pid amici*/
-    id_queue_pid_friends = msgget(ID_QUEUE_FRIENDS_PID,IPC_CREAT | 0600);
-
-    shd_masterbook_info->num_nodes = 0;
 
     /* Converte da int a char gli id delle memorie condivise */
     sprintf(id_argument_sm_nodes, "%d", shared_nodes_id);
@@ -236,7 +227,7 @@ int main(int argc, char **argv, char **envp){
             printf("Numero nodi massimo raggiunto\n");
             kill(getpid(), SIGUSR2);
         };
-        /*stampa_info();*/
+        stampa_info();
         nanosleep(&timestamp, NULL);
     }
     
@@ -244,6 +235,15 @@ int main(int argc, char **argv, char **envp){
 }
 
 int ipc_init(){
+
+    /*Creo coda di messaggi amici*/
+    id_queue_friends = msgget(ID_QUEUE_FRIENDS,IPC_CREAT | 0600);
+
+    /*Creo coda di messaggi pid amici*/
+    id_queue_pid_friends = msgget(ID_QUEUE_FRIENDS_PID,IPC_CREAT | 0600);
+
+    /* PARTE DA 24 Coda di messaggi per transazioni rifiutate 
+    id_queue_message_rejected = msgget(ID_QUEUE_MESSAGE_REJECTED, IPC_CREAT | 0600);*/
 
     /* Create a shared memory area for nodes struct */
     shared_nodes_id = shmget(IPC_PRIVATE, num_max_nodes * sizeof(node_struct), 0600);
@@ -260,8 +260,6 @@ int ipc_init(){
         perror("Errore durante la creazione della shared memory del masterbook\n");
         return -1;
     }
-    master_book =(block*)shmat(shared_masterbook_id, NULL, 0);
-
     /* Creazione memoria condivisa per user*/
     shared_users_id = shmget(IPC_PRIVATE, SO_USERS_NUM*sizeof(user_struct),0600);
     if(shared_users_id == -1){
@@ -280,6 +278,7 @@ int ipc_init(){
     shd_masterbook_info = (masterbook_struct*)shmat(shared_masterbook_info_id, NULL,0);
     shd_masterbook_info->last_block_id = 0;
     shd_masterbook_info->num_block = 0;
+    shd_masterbook_info->num_nodes = 0;
 
     /* Inizializzo il semaforo*/
     shd_masterbook_info->sem_masterbook = semget(getpid(), 1,IPC_CREAT | 0600);
@@ -317,11 +316,11 @@ int ipc_init(){
 void genera_nodi(char **envp, int num_nodes)
 {
     char node_id[3 * sizeof(int) + 1];
-    int i,j;
+    int i,current_nodes;
     int msgq_id;
-    j = shd_masterbook_info->num_nodes;
+    current_nodes = shd_masterbook_info->num_nodes;
 
-    for (i = shd_masterbook_info->num_nodes; i < j+num_nodes; i++)
+    for (i = shd_masterbook_info->num_nodes; i < current_nodes+num_nodes; i++)
     {
         switch (fork())
         {
@@ -387,10 +386,7 @@ void genera_utenti(char** envp)
                 user[i].budget = SO_BUDGET_INIT;
                 user[i].status = 1;
 
-                sops.sem_num = 0;
-                sops.sem_op = -1;
-                sops.sem_flg = 0;
-                if(semop(sem_nodes_users_id, &sops, 1)<0){
+                if(semop(sem_nodes_users_id, &sop_p, 1)<0){
                     printf("Errore semaforo sem nodes users\n");
                 }
                
@@ -421,6 +417,8 @@ void remove_IPC(){
     }
     msgctl(id_queue_friends, IPC_RMID, NULL);
     msgctl(id_queue_pid_friends, IPC_RMID, NULL);
+    /* PARTE DA 24
+    msgctl(id_queue_message_rejected, IPC_RMID, NULL);*/
     semctl(sem_nodes_users_id,0, IPC_RMID);
     semctl(sem_users_id, 0, IPC_RMID);
     semctl(sem_masterbook_id, 0, IPC_RMID);
@@ -465,11 +463,8 @@ void stampa_info(){
         exitReason=1;
         kill(getpid(), SIGINT); 
     }
-    for(i=0; i<shd_masterbook_info->num_nodes;i++){
-        if(nodes[i].status==0)nodes_dead++;
-    }
 
-    printf("\nNODI ATTIVI: %d\tUSER ATTIVI: %d\n", shd_masterbook_info->num_nodes-nodes_dead,SO_USERS_NUM - user_dead);
+    printf("\nNODI ATTIVI: %d\tUSER ATTIVI: %d\n", shd_masterbook_info->num_nodes,SO_USERS_NUM - user_dead);
     
     if(SO_USERS_NUM > MAX_PROC_PRINTABLE){
         print_min_max_budget_user();
@@ -479,7 +474,6 @@ void stampa_info(){
     
     stampa_nodi();
     user_dead=0;
-    nodes_dead=0;
 }
 
 void print_min_max_budget_user(){
@@ -641,4 +635,5 @@ void get_friends(int node_id){
         }
         
     }
+    free(f);
 }

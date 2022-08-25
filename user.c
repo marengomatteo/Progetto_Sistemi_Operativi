@@ -35,7 +35,8 @@ struct sembuf sop_r; /* rilascia la risorsa */
 
 int curr_balance;   
 int last_block;
-int id_queue_message_rejected;
+/* PARTE DA 24 
+int id_queue_message_rejected;*/
 
 /*----------------------------
 |     Variabili per argv      |
@@ -86,8 +87,9 @@ int main(int argc, char *argv[])
     /* Mi attacco alla memoria condivisa delle info del masterbook */
     shd_masterbook_info = shmat(MASTERBOOK_INFO_ID, NULL, 0);
    
-    /* Coda di messaggi per transazioni rifiutate */
-    id_queue_message_rejected = msgget(ID_QUEUE_MESSAGE_REJECTED, IPC_CREAT | 0600);
+    /* PARTE DA 24
+     Coda di messaggi per transazioni rifiutate 
+    id_queue_message_rejected = msgget(ID_QUEUE_MESSAGE_REJECTED, IPC_CREAT | 0600);*/
 
     /* Riservo la risorsa*/
     sop_p.sem_num = 0;

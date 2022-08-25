@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     |   Dichiarazione variabili  |
     ----------------------------*/
     int r_time, r_friend;
-    int id_queue_message_rejected;
+   /* PARTE DA 24 int id_queue_message_rejected;*/
     int id_queue_friends,id_queue_pid_friends;
     struct timespec timestamp;
     int j,i;
@@ -130,7 +130,6 @@ int main(int argc, char *argv[])
             #endif
            
             if(nodes[NODE_ID].tp_size == SO_TP_SIZE){
-           printf("Tp piena\n");
 
                 /* PARTE DA 24 */
                 /* messaggio di transazione rifiutata, rispedito allo user che aggiornerà il suo bilancio 
