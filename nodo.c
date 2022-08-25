@@ -10,6 +10,7 @@
 #define MASTERBOOK_INFO_ID atoi(argv[3])
 #define SEM_MASTERBOOK_INFO_ID atoi(argv[4])
 #define SEM_NODES_USERS atoi(argv[5])
+#define SEM_NODES atoi(argv[6])
 
 #define REWARD_SENDER -1 
 
@@ -178,8 +179,18 @@ int main(int argc, char *argv[])
                 /* aggiungo transazione alla transaction pool */
                 l_add_transaction(msg.trans,&transaction_pool);
 
+                if(semop(SEM_NODES, &sop_p, 1) == -1){
+                    perror("errore nel semaforo dei nodi preso\n");
+                    return -1;
+                }
+       
                 /* aumento la transaction pool size nella memoria condivisa */
                 nodes[NODE_ID].tp_size++;
+      
+                if(semop(SEM_NODES, &sop_r, 1) == -1){
+                    perror("errore nel semaforo dei nodi rilascio\n");
+                    return -1;
+                }
             }
 
         }
@@ -212,7 +223,19 @@ int main(int argc, char *argv[])
             }
             else{
                 l_add_transaction(msg_friend.trans,&transaction_pool);
+
+                if(semop(SEM_NODES, &sop_p, 1) == -1){
+                    perror("errore nel semaforo dei nodi preso\n");
+                    return -1;
+                }
+       
+                /* aumento la transaction pool size nella memoria condivisa */
                 nodes[NODE_ID].tp_size++;
+      
+                if(semop(SEM_NODES, &sop_r, 1) == -1){
+                    perror("errore nel semaforo dei nodi rilascio\n");
+                    return -1;
+                }
 
             }
         }
@@ -235,12 +258,24 @@ int main(int argc, char *argv[])
             transaction_pool.head = transaction_pool.head->next;
             if(transaction_pool.head == NULL) 
                 transaction_pool.tail = NULL;
+
+            if(semop(SEM_NODES, &sop_p, 1) == -1){
+                perror("errore nel semaforo dei nodi preso\n");
+                return -1;
+            }
+    
             nodes[NODE_ID].tp_size--;
+    
+            if(semop(SEM_NODES, &sop_r, 1) == -1){
+                perror("errore nel semaforo dei nodi rilascio\n");
+                return -1;
+            }
         }
+
         while(nodes[NODE_ID].tp_size > 0){
 
             /* Creo un nuovo blocco*/
-            build_block(NODE_ID);
+            build_block(NODE_ID, SEM_NODES);
 
             if(index_block == SO_BLOCK_SIZE-1){
 
@@ -271,7 +306,19 @@ int main(int argc, char *argv[])
 
                     /* aggiungo il blocco al masterbook */
                     masterbook[transaction_block.id_block] = transaction_block;
+
+                    if(semop(SEM_NODES, &sop_p, 1) == -1){
+                        perror("errore nel semaforo dei nodi preso\n");
+                        exit(EXIT_FAILURE);
+                    }
+                
                     nodes[NODE_ID].budget+= transaction_block.transaction_array[SO_BLOCK_SIZE-1].amount;
+
+                    if(semop(SEM_NODES, &sop_r, 1) == -1){
+                        perror("errore nel semaforo dei nodi rilascio\n");
+                        exit(EXIT_FAILURE);
+                    }
+
                     shd_masterbook_info->num_block++;
 
                 }
@@ -346,7 +393,7 @@ int new_id_block(int sem_id){
     return block_id;
 }
 
-void build_block(int node_id){
+void build_block(int node_id, int sem_nodes){
 
     while( nodes[node_id].tp_size > 0 && index_block < SO_BLOCK_SIZE-1) {
 
@@ -364,7 +411,18 @@ void build_block(int node_id){
         if(transaction_pool.head == NULL) 
             transaction_pool.tail = NULL;
 
+
+        if(semop(sem_nodes, &sop_p, 1) == -1){
+            perror("errore nel semaforo dei nodi preso\n");
+            exit(EXIT_FAILURE);
+        }
+       
         /* diminuisco la size della transaction pool sulla memoria condivisa*/
         nodes[node_id].tp_size--;
+
+        if(semop(sem_nodes, &sop_r, 1) == -1){
+            perror("errore nel semaforo dei nodi rilascio\n");
+            exit(EXIT_FAILURE);
+        }
     }
 }

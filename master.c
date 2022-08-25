@@ -24,6 +24,7 @@
 
 /* ID IPC Semaforo globale */
 int sem_users_id;
+int sem_nodes_id;
 int sem_nodes_users_id;
 int sem_masterbook_id;
 
@@ -36,7 +37,7 @@ int shared_nodes_id; /* id memoria condivisa dei nodi*/
 int shared_masterbook_id; /* id mlibro mastro*/
 int shared_users_id; /* id memoria condivisa degli user*/
 
-char *node_arguments[6] = {NODE_NAME};
+char *node_arguments[7] = {NODE_NAME};
 char *user_arguments[8] = {USER_NAME};
 
 struct timespec timestamp;
@@ -84,6 +85,7 @@ int main(int argc, char **argv, char **envp){
 
     char id_argument_sem_id[3 * sizeof(int) + 1]; /*id semaforo user e nodi*/
     char id_argument_sem_users_id[3*sizeof(int)+1]; /*id semaforo per user*/
+    char id_argument_sem_nodes_id[3*sizeof(int)+1]; /*id semaforo per nodi*/
     char id_argument_sem_masterbook_id[3 * sizeof(int) + 1]; /*id semaforo per scrivere e leggere su masterbook*/
 
     if (signal(SIGALRM, sig_handler)==SIG_ERR) {
@@ -138,6 +140,7 @@ int main(int argc, char **argv, char **envp){
     sprintf(id_argument_sem_id, "%d", sem_nodes_users_id);
     sprintf(id_argument_sem_masterbook_id,"%d",sem_masterbook_id);
     sprintf(id_argument_sem_users_id,"%d",sem_users_id);
+    sprintf(id_argument_sem_nodes_id,"%d",sem_nodes_id);
 
     /* Argomenti per nodo*/
     node_arguments[0] = id_argument_sm_nodes;
@@ -145,6 +148,7 @@ int main(int argc, char **argv, char **envp){
     node_arguments[3] = id_argument_sm_masterinfo;
     node_arguments[4] = id_argument_sem_masterbook_id;
     node_arguments[5] = id_argument_sem_id;
+    node_arguments[6] = id_argument_sem_nodes_id;
 
     /* Argomenti per user*/
     user_arguments[0] = id_argument_sm_users;
@@ -313,6 +317,11 @@ int ipc_init(){
         perror("Errore durante la creazione del semaforo per accedere alle informazioni dello user\n");
         return -1;
     }
+    sem_nodes_id = semget(IPC_PRIVATE, 1, IPC_CREAT | 0600);
+    if(sem_nodes_id == -1){
+        perror("Errore durante la creazione del semaforo per accedere alle informazioni dei nodi\n");
+        return -1;
+    }
 }
 
 void genera_nodi(char **envp, int num_nodes)
@@ -402,6 +411,8 @@ void sem_init(){
     semctl(sem_masterbook_id, 0, SETVAL, 1);
     semctl(shd_masterbook_info->sem_masterbook, 0, SETVAL, 1);
     semctl(sem_users_id, 0, SETVAL, 1);
+    semctl(sem_nodes_id, 0, SETVAL, 1);
+
 }
 
 void remove_IPC(){
@@ -548,7 +559,18 @@ void stampa_nodi(){
     printf("---------------NODI---------------\n");
 
     for( i = 0; i < shd_masterbook_info->num_nodes; i++){
+        if(semop(sem_nodes_id, &sop_p, 1) == -1){
+            perror("errore nel semaforo dei nodi preso\n");
+            exit(EXIT_FAILURE);
+        }
+       
         printf("node:{ pid: %d, budget: %d}\n", nodes[i].pid, nodes[i].budget);
+
+        if(semop(sem_nodes_id, &sop_r, 1) == -1){
+            perror("errore nel semaforo dei nodi rilascio\n");
+            exit(EXIT_FAILURE);
+        }
+
     }
        
 }
@@ -590,7 +612,18 @@ void stampa_review_finale(int exit_reason){
     }
 
     for(i=0; i<shd_masterbook_info->num_nodes;i++){
+
+        if(semop(sem_nodes_id, &sop_p, 1) == -1){
+            perror("errore nel semaforo dei nodi preso\n");
+            exit(EXIT_FAILURE);
+        }
+       
         printf("Bilancio nodo %d: %d\n", nodes[i].pid, nodes[i].budget);
+
+        if(semop(sem_nodes_id, &sop_r, 1) == -1){
+            perror("errore nel semaforo dei nodi rilascio\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     for(i=0; i<SO_USERS_NUM;i++){
@@ -619,7 +652,18 @@ void stampa_review_finale(int exit_reason){
     }        
     printf("Transazioni rimanenti nelle transaction pool:\n");
     for(i=0; i<shd_masterbook_info->num_nodes;i++){
+
+        if(semop(sem_nodes_id, &sop_p, 1) == -1){
+            perror("errore nel semaforo dei nodi preso\n");
+            exit(EXIT_FAILURE);
+        }
+       
         printf("Nodo %d ha %d transazioni rimanenti\n", nodes[i].pid, nodes[i].tp_size);
+
+        if(semop(sem_nodes_id, &sop_r, 1) == -1){
+            perror("errore nel semaforo dei nodi rilascio\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     remove_users();
