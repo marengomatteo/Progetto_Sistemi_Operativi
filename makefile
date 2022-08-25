@@ -14,7 +14,7 @@ export SO_MIN_TRANS_PROC_NSEC=10000000
 export SO_MAX_TRANS_PROC_NSEC=20000000
 export SO_SIM_SEC=10
 export SO_NUM_FRIENDS=3
-export SO_HOPS=0
+export SO_HOPS=1
 
 master: master.o nodo user shared.h
 	${CC} -o master master.o

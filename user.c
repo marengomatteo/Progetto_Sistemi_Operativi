@@ -144,6 +144,7 @@ void send_transaction(){
         /* printf("[USER %d] invia transaction\n",getpid());
         indice random per prendere un nodo a cui inviare la transazione da processare*/
         srand(clock());
+
         index_rnode = rand() % shd_masterbook_info->num_nodes;
 
         msg.mtype = nodes[index_rnode].pid;
@@ -204,20 +205,20 @@ void update_budget(){
             printf("[USER %d] current budget prima: %d\n", getpid(), curr_balance);
         #endif
 
-        if(semop(shd_masterbook_info->sem_masterbook, &sop_p, 1) == -1) {
-            printf("errore semaforo user\n");
-        }
         
         for(index_transaction = 0; index_transaction < SO_BLOCK_SIZE; index_transaction++){
+            if(semop(shd_masterbook_info->sem_masterbook, &sop_p, 1) == -1) {
+                printf("errore semaforo user\n");
+            }
             if(masterbook[users[user_id].last_block_read].transaction_array[index_transaction].receiver == getpid()){
                 curr_balance += masterbook[users[user_id].last_block_read].transaction_array[index_transaction].amount;
                /* printf("[USER %d] curr balance AGGIORNATO %d di %d\n", getpid(), curr_balance, masterbook[users[user_id].last_block_read].transaction_array[index_transaction].amount);*/
             }
-        }
 
-        /* Rilascio il semaforo */
-        if (semop(shd_masterbook_info->sem_masterbook, &sop_r, 1) == -1) {
-            printf("errore nel rilascio del semaforo\n");
+            /* Rilascio il semaforo */
+            if (semop(shd_masterbook_info->sem_masterbook, &sop_r, 1) == -1) {
+                printf("errore nel rilascio del semaforo\n");
+            }
         }
 
         /*  PARTE DA 24

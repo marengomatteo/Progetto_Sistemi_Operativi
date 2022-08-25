@@ -9,6 +9,7 @@
 #define MASTERBOOK_ID atoi(argv[2])
 #define MASTERBOOK_INFO_ID atoi(argv[3])
 #define SEM_MASTERBOOK_INFO_ID atoi(argv[4])
+#define SEM_NODES_USERS atoi(argv[5])
 
 #define REWARD_SENDER -1 
 
@@ -76,6 +77,11 @@ int main(int argc, char *argv[])
 
     /*Creo coda di messaggi pid amici*/
     id_queue_pid_friends = msgget(ID_QUEUE_FRIENDS_PID,IPC_CREAT | 0600);
+
+    /* semop in attesa che tutti i nodi e gli utenti vengano creati*/
+    sops.sem_op = 0;
+    sops.sem_num = 0;
+    semop(SEM_NODES_USERS, &sops, 1);
 
 
     for(i=0; i<num_friends;i++){
@@ -196,7 +202,6 @@ int main(int argc, char *argv[])
                     }
                 }
                 else {
-                    printf("invio a master\n");
                     msg_friend.mtype = getppid();
                     /*printf("[LINEA 204 NODO %d] msg_friend type %ld: { hops: %d, sender: %d, receiver: %d, timestamp %ld }\n", getpid(),msg_friend.mtype, msg_friend.hops, msg_friend.trans.sender, msg_friend.trans.receiver, msg_friend.trans.timestamp);*/
                     if(msgsnd(id_queue_friends,&msg_friend,sizeof(message_f),0) < 0){

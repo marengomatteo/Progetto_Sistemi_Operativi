@@ -144,6 +144,7 @@ int main(int argc, char **argv, char **envp){
     node_arguments[2] = id_argument_sm_masterbook;
     node_arguments[3] = id_argument_sm_masterinfo;
     node_arguments[4] = id_argument_sem_masterbook_id;
+    node_arguments[5] = id_argument_sem_id;
 
     /* Argomenti per user*/
     user_arguments[0] = id_argument_sm_users;
@@ -176,6 +177,7 @@ int main(int argc, char **argv, char **envp){
     
     while(1){
         /* controllo se ci sono messaggi dei nodi per il master */
+
         if(msgrcv(id_queue_friends, msg_friend, sizeof(message_f), getpid(),IPC_NOWAIT)>0 && shd_masterbook_info->num_nodes<num_max_nodes){
             printf("master riceve\n");
             /* creo nuovo nodo*/
@@ -345,12 +347,6 @@ void genera_nodi(char **envp, int num_nodes)
                 sops.sem_op = -1;
                 sops.sem_flg = 0;
                 semop(sem_nodes_users_id, &sops, 1);
-                
-                /* semop in attesa che tutti i nodi e gli utenti vengano creati*/
-                sops.sem_op = 0;
-                sops.sem_num = 0;
-                semop(sem_nodes_users_id, &sops, 1);
-
 
                 /* INSTANZIARE CON EXECVE IL NODO, Passare parametri */
                 if (execve(NODE_NAME, node_arguments, envp) == -1){
@@ -359,7 +355,7 @@ void genera_nodi(char **envp, int num_nodes)
                 }
             case -1:
                 exit(EXIT_FAILURE);
-            default:
+            default:             
                 shd_masterbook_info->num_nodes++;
             break;
         }
@@ -389,7 +385,6 @@ void genera_utenti(char** envp)
                 if(semop(sem_nodes_users_id, &sop_p, 1)<0){
                     printf("Errore semaforo sem nodes users\n");
                 }
-               
                 if (execve(USER_NAME, user_arguments, envp) == -1){
                     perror("Could not execve");
                     exit(EXIT_FAILURE);
@@ -483,7 +478,15 @@ void print_min_max_budget_user(){
     user_copy = malloc(SO_USERS_NUM*sizeof(user_struct));
 
     for(i = 0; i < SO_USERS_NUM; i++){
+        if(semop(sem_users_id, &sop_p, 1) == -1){
+            perror("errore nel semaforo preso per lettura user da master\n");
+        }
+
         user_copy[i]=user[i];
+
+        if(semop(sem_users_id, &sop_r, 1) == -1){
+            perror("errore nel semaforo preso per lettura user da master\n");
+        }
     }
 
     for (i = 0; i < SO_USERS_NUM; ++i){
@@ -575,7 +578,15 @@ void stampa_review_finale(int exit_reason){
     }
 
     for(i=0; i<SO_USERS_NUM;i++){
+
+        if(semop(sem_users_id, &sop_p, 1) == -1){
+            perror("errore nel semaforo preso per lettura user da master\n");
+        }
         printf("Bilancio user %d: %d\n", user[i].pid, user[i].budget);
+
+        if(semop(sem_users_id, &sop_r, 1) == -1){
+            perror("errore nel semaforo preso per lettura user da master\n");
+        }
     }
 
     for(i=0; i<shd_masterbook_info->num_nodes;i++){
@@ -583,13 +594,29 @@ void stampa_review_finale(int exit_reason){
     }
 
     for(i=0; i<SO_USERS_NUM;i++){
+
+        if(semop(sem_users_id, &sop_p, 1) == -1){
+            perror("errore nel semaforo preso per lettura user da master\n");
+        }
         if(user[i].status==0) user_dead++;
+
+        if(semop(sem_users_id, &sop_r, 1) == -1){
+            perror("errore nel semaforo preso per lettura user da master\n");
+        }        
         #if DEBUG == 1
             printf("user terminati: %d\n", user_dead);
         #endif
     }
     printf("Numero utenti terminati prematuramente: %d\n", user_dead);
+
+    if(semop(sem_masterbook_id, &sop_p, 1) == -1){
+        perror("errore nel semaforo preso per lettura user da master\n");
+    }
     printf("Numero blocchi nel masterbook: %d\n", shd_masterbook_info->num_block);
+
+    if(semop(sem_masterbook_id, &sop_r, 1) == -1){
+        perror("errore nel semaforo preso per lettura user da master\n");
+    }        
     printf("Transazioni rimanenti nelle transaction pool:\n");
     for(i=0; i<shd_masterbook_info->num_nodes;i++){
         printf("Nodo %d ha %d transazioni rimanenti\n", nodes[i].pid, nodes[i].tp_size);
