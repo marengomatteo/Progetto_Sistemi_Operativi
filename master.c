@@ -429,6 +429,7 @@ void remove_IPC(){
     semctl(sem_users_id, 0, IPC_RMID);
     semctl(sem_masterbook_id, 0, IPC_RMID);
     semctl(shd_masterbook_info->sem_masterbook, 0, IPC_RMID);
+    semctl(sem_nodes_id, 0, IPC_RMID);
     shmctl(shared_nodes_id,0, IPC_RMID);
     shmctl(shared_masterbook_id,0, IPC_RMID);
     shmctl(shared_users_id,0, IPC_RMID);

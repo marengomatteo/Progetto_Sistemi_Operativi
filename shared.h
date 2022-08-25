@@ -91,6 +91,8 @@ typedef struct _message_id_f{
     pid_t friend;
 }message_id_f;
 
+/*
+FUNZIONI DI DEBUG
 
 void transaction_print (transaction d){
   printf("transaction [PROC %d]:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d},\n", getpid(),d.timestamp, d.sender, d.receiver, d.amount, d.reward);
@@ -119,6 +121,6 @@ void masterbook_print(block* blocks){
   for(i = 0; i < SO_BLOCK_SIZE; i++){
     a_print(blocks[i]);
   }
-}
+}*/
 
 #endif
