@@ -17,17 +17,18 @@
 
 #define DEBUG 0
 
-#define SO_BLOCK_SIZE 3
+#define SO_BLOCK_SIZE 90
 #define SO_REGISTRY_SIZE 1000
 #define ID_QUEUE_MESSAGE_REJECTED 20
 #define ID_QUEUE_FRIENDS 40
+#define ID_QUEUE_FRIENDS_PID 30
 
 #define SO_NUM_FRIENDS atoi(getenv("SO_NUM_FRIENDS"))
 
 typedef struct _transaction {
   long timestamp;
-  int sender;
-  int receiver;
+  pid_t sender;
+  pid_t receiver;
   int amount;
   int reward;
 } transaction;
@@ -48,7 +49,7 @@ typedef struct _block{
 } block;
 
 typedef struct _node_struct {
-    int pid;
+    pid_t pid;
     int id_mq;
     int budget;
     int status;
@@ -56,7 +57,7 @@ typedef struct _node_struct {
 } node_struct;
 
 typedef struct _user_struct{
-    int pid;
+    pid_t pid;
     int budget;
     int status; /* 0 dead, 1 alive */
     int last_block_read;
@@ -66,6 +67,7 @@ typedef struct _masterbook_struct {
   int last_block_id;
   int num_block;
   int sem_masterbook;
+  int num_nodes;
 } masterbook_struct;
 
 typedef struct _message {
@@ -82,15 +84,16 @@ typedef struct _message_f {
 typedef struct _rejected_message{
     long mtype;
     int amount;
-    pid_t receiver;
 } rejected_message;
 
 typedef struct _message_id_f{
     long mtype;
-    int friend;
+    pid_t friend;
 }message_id_f;
+
+
 void transaction_print (transaction d){
-  printf("transaction:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d},\n", d.timestamp, d.sender, d.receiver, d.amount, d.reward);
+  printf("transaction [PROC %d]:{timestamp: %ld,sender: %d,receiver: %d,amount: %d,reward: %d},\n", getpid(),d.timestamp, d.sender, d.receiver, d.amount, d.reward);
 }
 
 void l_print(list l){

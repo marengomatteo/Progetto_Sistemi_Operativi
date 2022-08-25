@@ -28,9 +28,9 @@ int sem_nodes_users_id;
 int sem_masterbook_id;
 
 struct sembuf sops;
-
 struct sembuf sop_p;
 struct sembuf sop_r;
+
 /* Array per tener traccia delle risorse create SHAREDMEMORY */
 int shared_nodes_id; /* id memoria condivisa dei nodi*/
 int shared_masterbook_id; /* id mlibro mastro*/
@@ -45,8 +45,11 @@ block *master_book;
 user_struct *user;
 masterbook_struct* shd_masterbook_info;
 int shared_masterbook_info_id;
-int id_queue_friends;
+int id_queue_friends,id_queue_pid_friends;
+int num_max_nodes;
 int exitReason=2, user_dead=0, nodes_dead=0;
+message_id_f *msg_id_friends;
+
 void sig_handler(int signum){
    switch(signum){
         case SIGALRM:
@@ -57,6 +60,9 @@ void sig_handler(int signum){
         case SIGUSR1:
             exitReason = 3;
             break;
+        case SIGUSR2:
+            exitReason = 4;
+            break;
         default:
         break;
    }
@@ -65,8 +71,10 @@ void sig_handler(int signum){
 
 int main(int argc, char **argv, char **envp){
 
-    int i, num_nodi;
-    message_f msg_friend;
+    int i;
+    int r_index;
+    message_f *msg_friend;
+    message msg;
     char id_argument_sm_nodes[3 * sizeof(int) + 1]; /*id memoria condivisa nodi*/
     char id_argument_sm_users[3 * sizeof(int) + 1]; /*id memoria condivisa user*/
     char id_argument_sm_masterbook[3 * sizeof(int) + 1]; /*id memoria condivisa master book*/
@@ -78,6 +86,7 @@ int main(int argc, char **argv, char **envp){
 
     struct timespec* time;
 
+    int flag=0;
     if (signal(SIGALRM, sig_handler)==SIG_ERR) {
         printf("\nErrore della disposizione dell'handler\n");
         exit(EXIT_FAILURE);
@@ -90,16 +99,24 @@ int main(int argc, char **argv, char **envp){
         printf("\nErrore della disposizione dell'handler\n");
         exit(EXIT_FAILURE);
     }
+    if (signal(SIGUSR2, sig_handler)==SIG_ERR) {
+        printf("\nErrore della disposizione dell'handler\n");
+        exit(EXIT_FAILURE);
+    }
 
     if(SO_TP_SIZE <= SO_BLOCK_SIZE) {
-       /*printf("so_tp_size %d\n", SO_TP_SIZE);
-        printf("so_B_size %d\n", SO_BLOCK_SIZE); */
-        printf("Parametri errati\n");
+        /* printf("so_tp_size %d\n", SO_TP_SIZE);
+        printf("so_B_size %d\n", SO_BLOCK_SIZE);*/ 
+        printf("Parametri errati inserire SO_TP_SIZE maggiore di SO_BLOCK_SIZE\n");
         exit(EXIT_FAILURE);
     }
    
-    alarm(20);
+    alarm(SO_SIM_SEC);
 
+    msg_friend = (message_f*)malloc(sizeof(message_f));
+    msg_id_friends = (message_id_f*)malloc(sizeof(message_id_f));
+
+    num_max_nodes= SO_NODES_NUM*2;
     /* init memorie condivise */
     if(ipc_init() < 0){
         exit(EXIT_FAILURE);
@@ -116,8 +133,10 @@ int main(int argc, char **argv, char **envp){
     /*Creo coda di messaggi amici*/
     id_queue_friends = msgget(ID_QUEUE_FRIENDS,IPC_CREAT | 0600);
 
+    /*Creo coda di messaggi pid amici*/
+    id_queue_pid_friends = msgget(ID_QUEUE_FRIENDS_PID,IPC_CREAT | 0600);
 
-    num_nodi=SO_NODES_NUM;
+    shd_masterbook_info->num_nodes = 0;
 
     /* Converte da int a char gli id delle memorie condivise */
     sprintf(id_argument_sm_nodes, "%d", shared_nodes_id);
@@ -131,10 +150,9 @@ int main(int argc, char **argv, char **envp){
 
     /* Argomenti per nodo*/
     node_arguments[0] = id_argument_sm_nodes;
-    node_arguments[1] = id_argument_sem_id;
-    node_arguments[3] = id_argument_sm_masterbook;
-    node_arguments[4] = id_argument_sm_masterinfo;
-    node_arguments[5] = id_argument_sem_masterbook_id;
+    node_arguments[2] = id_argument_sm_masterbook;
+    node_arguments[3] = id_argument_sm_masterinfo;
+    node_arguments[4] = id_argument_sem_masterbook_id;
 
     /* Argomenti per user*/
     user_arguments[0] = id_argument_sm_users;
@@ -157,36 +175,78 @@ int main(int argc, char **argv, char **envp){
     
     sops.sem_num = 0;
     sops.sem_op = 0;
-    
     semop(sem_nodes_users_id, &sops, 1);
+
     for(i=0; i<SO_NODES_NUM;i++)
         get_friends(i);
-
+    
+    timestamp.tv_sec = 1;
+    timestamp.tv_nsec = 0;
+    
     while(1){
         /* controllo se ci sono messaggi dei nodi per il master */
-        while(msgrcv(id_queue_friends, &msg_friend, sizeof(message_f), getpid(),IPC_NOWAIT)>0){
-            /* creo nuovo nodo */
+        if(msgrcv(id_queue_friends, msg_friend, sizeof(message_f), getpid(),IPC_NOWAIT)>0 && shd_masterbook_info->num_nodes<num_max_nodes){
+            printf("master riceve\n");
+            /* creo nuovo nodo*/
+            semctl(sem_nodes_users_id,0,SETVAL,1);
             genera_nodi(envp, 1);
-            num_nodi++;
-            get_friends(num_nodi-1);
+
+            sops.sem_op=0;
+            sops.sem_num=0;
+            semop(sem_nodes_users_id,&sops,1);
+            
+            get_friends(shd_masterbook_info->num_nodes-1);
+
+            msg.mtype = nodes[shd_masterbook_info->num_nodes-1].pid;
+            msg.trans = msg_friend->trans;
+
+            /* Invio la transazione arrivata al nodo appena creato*/
+            if(msgsnd(nodes[shd_masterbook_info->num_nodes-1].id_mq,&msg,sizeof(message),0) < 0){
+                perror("errore nella message send della transazione da mastera a nodo linea 191\n");
+                return -1;
+            }
+            
+            /*
+                Invio tutte le transazioni ricevute al nodo appena creato
+                Quando il master uscirà dal while non avrà più messaggi nella sua coda,
+                in un secondo momento quando arriveranno altre transazioni il master 
+                creerà un altro nodo.
+            */
+            while(msgrcv(id_queue_friends, msg_friend, sizeof(message_f), getpid(),IPC_NOWAIT)>0){
+                msg.mtype = nodes[shd_masterbook_info->num_nodes-1].pid;
+                msg.trans = msg_friend->trans;
+                if(msgsnd(nodes[shd_masterbook_info->num_nodes-1].id_mq,&msg,sizeof(message),0) < 0){
+                    perror("errore nella message send della transazione da mastera a nodo linea 191\n");
+                    return -1;
+                }
+            }
+
+            for(i=0; i<SO_NUM_FRIENDS;i++){
+                srand(clock());
+                r_index = rand() % (shd_masterbook_info->num_nodes-1);
+                msg_id_friends->friend=nodes[shd_masterbook_info->num_nodes-1].pid;
+                msg_id_friends->mtype=nodes[r_index].pid;
+                if(msgsnd(id_queue_pid_friends, msg_id_friends, sizeof(message_id_f),0)<0){
+                    perror("errore message invio amici send linea 206");
+                    return -1;
+                }
+            }
         }
-        stampa_info();
-        sleep(1);
+        if(shd_masterbook_info->num_nodes == num_max_nodes){
+            printf("Numero nodi massimo raggiunto\n");
+            kill(getpid(), SIGUSR2);
+        };
+        /*stampa_info();*/
+        nanosleep(&timestamp, NULL);
     }
     
-    timestamp.tv_sec=1;
-    while(1) {
-        printf("manca un secondo in meno\n");
-        nanosleep(&timestamp, NULL);
-    };
-
     return 0;  
 }
 
 int ipc_init(){
 
     /* Create a shared memory area for nodes struct */
-    shared_nodes_id = shmget(IPC_PRIVATE, SO_NODES_NUM * sizeof(node_struct), 0600);
+    shared_nodes_id = shmget(IPC_PRIVATE, num_max_nodes * sizeof(node_struct), 0600);
     if(shared_nodes_id == -1){
         perror("Errore durante la creazione della shared memory dei nodi\n");
         return -1;
@@ -254,43 +314,45 @@ int ipc_init(){
     }
 }
 
-void genera_nodi(char **envp, int num_nodi)
+void genera_nodi(char **envp, int num_nodes)
 {
     char node_id[3 * sizeof(int) + 1];
     int i,j;
     int msgq_id;
-   
-    for (i = 0; i < num_nodi; i++)
+    j = shd_masterbook_info->num_nodes;
+
+    for (i = shd_masterbook_info->num_nodes; i < j+num_nodes; i++)
     {
         switch (fork())
         {
             case 0:
-                /*printf("\nCreato nodo %d\n", getpid());
-                */
+                               
                 sprintf(node_id, "%d", i);
-                node_arguments[2] = node_id;
+                node_arguments[1] = node_id;
+
                 /*Inserisco dentro la memoria condivisa dei nodi il pid del nodo e l'id della coda di messaggi*/
                 nodes[i].pid = getpid();
                 nodes[i].budget=0;
                 nodes[i].status=1;
                 nodes[i].tp_size=0;
-
                 msgq_id = msgget(getpid(), 0600 | IPC_CREAT);
                 if(msgq_id == -1){
                     perror("errore sulla coda di messaggi");
                     exit(EXIT_FAILURE);
                 }
                 nodes[i].id_mq = msgq_id;
+
                 sops.sem_num = 0;
                 sops.sem_op = -1;
                 sops.sem_flg = 0;
                 semop(sem_nodes_users_id, &sops, 1);
-
+                
                 /* semop in attesa che tutti i nodi e gli utenti vengano creati*/
-                printf("Attendo tutti i nodi e utenti\n");
                 sops.sem_op = 0;
                 sops.sem_num = 0;
                 semop(sem_nodes_users_id, &sops, 1);
+
+
                 /* INSTANZIARE CON EXECVE IL NODO, Passare parametri */
                 if (execve(NODE_NAME, node_arguments, envp) == -1){
                     perror("Could not execve");
@@ -299,7 +361,8 @@ void genera_nodi(char **envp, int num_nodi)
             case -1:
                 exit(EXIT_FAILURE);
             default:
-                break;
+                shd_masterbook_info->num_nodes++;
+            break;
         }
     }
 }
@@ -352,10 +415,12 @@ void sem_init(){
 
 void remove_IPC(){
     int i;
-    for (i=0;i<SO_NODES_NUM ;i++)
+    for (i=0;i<shd_masterbook_info->num_nodes ;i++)
     {
         msgctl(nodes[i].id_mq, IPC_RMID, NULL);
     }
+    msgctl(id_queue_friends, IPC_RMID, NULL);
+    msgctl(id_queue_pid_friends, IPC_RMID, NULL);
     semctl(sem_nodes_users_id,0, IPC_RMID);
     semctl(sem_users_id, 0, IPC_RMID);
     semctl(sem_masterbook_id, 0, IPC_RMID);
@@ -376,7 +441,7 @@ void remove_users(){
 
 void remove_nodes(){
     int i;
-    for( i = 0; i < SO_NODES_NUM; i++){
+    for( i = 0; i < shd_masterbook_info->num_nodes; i++){
         kill(nodes[i].pid, 9);
     }
 }
@@ -400,11 +465,11 @@ void stampa_info(){
         exitReason=1;
         kill(getpid(), SIGINT); 
     }
-    for(i=0; i<SO_NODES_NUM;i++){
+    for(i=0; i<shd_masterbook_info->num_nodes;i++){
         if(nodes[i].status==0)nodes_dead++;
     }
 
-    printf("\nNODI ATTIVI: %d\tUSER ATTIVI: %d\n", SO_NODES_NUM-nodes_dead,SO_USERS_NUM - user_dead);
+    printf("\nNODI ATTIVI: %d\tUSER ATTIVI: %d\n", shd_masterbook_info->num_nodes-nodes_dead,SO_USERS_NUM - user_dead);
     
     if(SO_USERS_NUM > MAX_PROC_PRINTABLE){
         print_min_max_budget_user();
@@ -423,7 +488,7 @@ void print_min_max_budget_user(){
     user_struct tmp;
     user_copy = malloc(SO_USERS_NUM*sizeof(user_struct));
 
-    for(i = 0; i<SO_USERS_NUM; i++){
+    for(i = 0; i < SO_USERS_NUM; i++){
         user_copy[i]=user[i];
     }
 
@@ -441,11 +506,11 @@ void print_min_max_budget_user(){
     
     printf("---------------%d MAX BUDGET-------------\n", MAX_PROC_PRINTABLE/2);
     for(i=SO_USERS_NUM-1; i>SO_USERS_NUM-(MAX_PROC_PRINTABLE/2)-1;i--){
-        printf("User %d budget: %d\n", i, user_copy[i].budget);
+        printf("User %d budget: %d\n", user_copy[i].pid, user_copy[i].budget);
     }
     printf("---------------%d MIN BUDGET-------------\n", MAX_PROC_PRINTABLE/2);
     for(i=0; i<MAX_PROC_PRINTABLE/2;i++){
-        printf("User %d budget: %d\n", i, user_copy[i].budget);
+        printf("User %d budget: %d\n", user_copy[i].pid, user_copy[i].budget);
     }
 
     free(user_copy);
@@ -485,7 +550,7 @@ void stampa_nodi(){
     int i;
     printf("---------------NODI---------------\n");
 
-    for( i = 0; i < SO_NODES_NUM; i++){
+    for( i = 0; i < shd_masterbook_info->num_nodes; i++){
         printf("node:{ pid: %d, budget: %d}\n", nodes[i].pid, nodes[i].budget);
     }
        
@@ -493,6 +558,7 @@ void stampa_nodi(){
 
 void stampa_review_finale(int exit_reason){
     int i;
+
     printf("\n------------INIZIO REVIEW------------\n");
     switch(exit_reason){
         case 0:
@@ -507,6 +573,9 @@ void stampa_review_finale(int exit_reason){
         case 3:
             printf("--------MASTERBOOK PIENO--------\n");
             break;
+        case 4:
+            printf("--------RAGGIUNTO NUMERO MASSIMO DI NODI--------\n");
+            break;
         default:
         break;
     }
@@ -514,12 +583,13 @@ void stampa_review_finale(int exit_reason){
     for(i=0; i<SO_USERS_NUM;i++){
         printf("Bilancio user %d: %d\n", user[i].pid, user[i].budget);
     }
-    for(i=0; i<SO_NODES_NUM;i++){
+
+    for(i=0; i<shd_masterbook_info->num_nodes;i++){
         printf("Bilancio nodo %d: %d\n", nodes[i].pid, nodes[i].budget);
     }
 
     for(i=0; i<SO_USERS_NUM;i++){
-        if(user[i].status==0)user_dead++;
+        if(user[i].status==0) user_dead++;
         #if DEBUG == 1
             printf("user terminati: %d\n", user_dead);
         #endif
@@ -527,7 +597,7 @@ void stampa_review_finale(int exit_reason){
     printf("Numero utenti terminati prematuramente: %d\n", user_dead);
     printf("Numero blocchi nel masterbook: %d\n", shd_masterbook_info->num_block);
     printf("Transazioni rimanenti nelle transaction pool:\n");
-    for(i=0; i<SO_NODES_NUM;i++){
+    for(i=0; i<shd_masterbook_info->num_nodes;i++){
         printf("Nodo %d ha %d transazioni rimanenti\n", nodes[i].pid, nodes[i].tp_size);
     }
 
@@ -538,12 +608,17 @@ void stampa_review_finale(int exit_reason){
     exit(EXIT_SUCCESS);
 }
 
+int get_r_pid(){
+    srand(clock());
+    return rand() % shd_masterbook_info->num_nodes;
+}
+
 void get_friends(int node_id){
        
     int* f;
     int i, r_index, flag, j;
-    message_id_f msg_id_friends;
-
+    
+    
     f = (int*) malloc(sizeof(int)*SO_NUM_FRIENDS); 
     
     for(i=0; i < SO_NUM_FRIENDS; i++){
@@ -558,15 +633,12 @@ void get_friends(int node_id){
             
         }while(flag == 1);
         f[i]=nodes[r_index].pid;
-        msg_id_friends.mtype=nodes[node_id].pid;
-        msg_id_friends.friend=f[i];
-        if(msgsnd(id_queue_friends,&msg_id_friends,sizeof(message_id_f),0) < 0){
-            printf("errore nella message send ad un amico");
+        msg_id_friends->mtype=nodes[node_id].pid;
+        msg_id_friends->friend=f[i];
+        /* printf("nodo %d creato da master: %d\n", node_id,nodes[node_id].pid);*/ 
+        if(msgsnd(id_queue_pid_friends,msg_id_friends,sizeof(message_id_f),0) < 0){
+            perror("errore nella message send ad un amico master\n");
         }
+        
     }
-}
-
-int get_r_pid(){
-    srand(clock());
-    return rand() % SO_NODES_NUM;
 }

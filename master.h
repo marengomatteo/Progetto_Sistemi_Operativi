@@ -8,7 +8,7 @@ nell'unità di conversione*/
 int ipc_init();
 void sem_init();
 void remove_IPC();
-void genera_nodi(char ** envp);
+void genera_nodi(char ** envp, int num_nodes);
 void genera_utenti(char ** envp);
 static void set_shared_memory();
 static void shm_print_stats(int fd, int m_id);
